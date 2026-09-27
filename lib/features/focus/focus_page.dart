@@ -40,6 +40,8 @@ class FocusPage extends ConsumerWidget {
             child: Tag(
               t.status == TaskStatus.completed
                   ? 'Tâche terminée'
+                  : t.status == TaskStatus.cancelled
+                  ? 'Tâche annulée'
                   : t.runningSince == null
                   ? 'En pause'
                   : 'Un instant pour avancer',
@@ -92,7 +94,7 @@ class FocusPage extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 34),
-          if (t.status != TaskStatus.completed)
+          if (t.isOpen)
             Row(
               children: [
                 Expanded(
@@ -126,12 +128,16 @@ class FocusPage extends ConsumerWidget {
                 ),
               ],
             )
-          else
+          else if (t.status == TaskStatus.completed)
             const Center(
               child: Text(
                 'Un pas de plus. Bien joué !',
                 style: TextStyle(color: AppColors.teal, fontSize: 18),
               ),
+            ),
+          if (t.status == TaskStatus.cancelled)
+            const Center(
+              child: Text('Rouvrez la tâche depuis son détail pour reprendre.'),
             ),
           if (t.checklist.isNotEmpty) ...[
             const SectionTitle('Un pas après l’autre'),

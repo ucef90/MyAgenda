@@ -119,7 +119,11 @@ class _TaskDetailState extends ConsumerState<TaskDetail> {
                       title: Text(
                         '${shortDate(t.scheduledAt!)} · ${clock(t.scheduledAt!)} – ${clock(t.scheduledEnd!)}',
                       ),
-                      subtitle: const Text('Créneau réservé'),
+                      subtitle: Text(
+                        t.status == TaskStatus.cancelled
+                            ? 'Créneau libéré · tâche annulée'
+                            : 'Créneau réservé',
+                      ),
                     ),
                 ],
               ),

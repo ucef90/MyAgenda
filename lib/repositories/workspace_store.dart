@@ -79,6 +79,8 @@ class WorkspaceStore extends StateNotifier<Workspace> {
     final old = state.tasks.where((t) => t.id == task.id).firstOrNull;
     if (task.scheduledAt != null &&
         (old == null ||
+            (old.status == TaskStatus.cancelled &&
+                task.status != TaskStatus.cancelled) ||
             old.scheduledAt != task.scheduledAt ||
             old.minutes != task.minutes ||
             old.deadline != task.deadline ||
@@ -118,6 +120,10 @@ class WorkspaceStore extends StateNotifier<Workspace> {
     ),
   );
   void startFocus(Task task) {
+    final current = state.tasks.where((t) => t.id == task.id).firstOrNull;
+    if (current == null || !current.isOpen) {
+      throw StateError('Rouvrez cette tâche avant de démarrer le focus.');
+    }
     final now = DateTime.now();
     _change(
       state.copyWith(
@@ -186,9 +192,7 @@ class WorkspaceStore extends StateNotifier<Workspace> {
       missions: [...state.missions.where((m) => m.id != mission.id), mission],
     ),
   );
-  void clearDemo() => _change(
-    Workspace(preferences: Preferences(name: state.preferences.name)),
-  );
+  void clearDemo() => _change(Workspace(preferences: state.preferences));
   String export() => _corruptOnLoad
       ? prefs.getString(storageKey) ?? jsonEncode(state.toJson())
       : const JsonEncoder.withIndent('  ').convert(state.toJson());

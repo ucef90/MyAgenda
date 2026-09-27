@@ -8,7 +8,7 @@ Application **Flutter / Dart**, en français, pour organiser tâches personnelle
 
 <img src="docs/screenshots/today.png" width="240" alt="Accueil Aujourd’hui" /> <img src="docs/screenshots/tasks.png" width="240" alt="Mes tâches" /> <img src="docs/screenshots/calendar.png" width="240" alt="Agenda sur trois jours" />
 
-## Version livrée : 0.1.0 — locale
+## Version livrée : 0.1.1 — locale
 
 Le projet suit les trois documents de conception : **valider la V1 visuelle avant de connecter FastAPI**. Il démarre avec un jeu de données de découverte daté du jour du premier lancement. Les modifications sont conservées sur l'appareil. Dans Paramètres, « Effacer les données de découverte » permet de repartir à vide (cela efface aussi vos ajouts : exporter avant).
 
@@ -24,7 +24,7 @@ Le projet suit les trois documents de conception : **valider la V1 visuelle avan
 | Pro | Création/modification de clients et de missions ; tâches associées et avancement calculé |
 | Disponibilités | Calculées à partir de toutes les réservations, y compris personnelles ; copie de texte sans détails privés |
 | Paramètres | Prénom, jours et horaires, pause, thème sombre, copie d'une sauvegarde JSON |
-| Plateformes | Projets iOS, Android et Web inclus |
+| Plateformes | Projets iOS, Android, macOS et Web inclus |
 
 **Non inclus à ce stade** : compte/authentification, serveur, synchronisation, notifications locales/push, pièces jointes, liens publics avec expiration, calendrier externe, fractionnement automatique, redimensionnement des blocs agenda, récurrence, facturation. L'aperçu client est explicitement local ; aucun faux lien n'est généré. Le texte copié ne se met pas à jour automatiquement.
 
@@ -46,6 +46,18 @@ flutter run -d chrome
 ```
 
 L'application peut être nommée autrement dans l'interface avec `--dart-define=APP_NAME=Flowtime`. Les noms du lanceur iOS/Android restent définis dans leurs fichiers de plateforme.
+
+## Installer sur votre Mac
+
+Préparer Flutter, Xcode (licence acceptée et composants installés) et CocoaPods. Puis, depuis le dépôt :
+
+```bash
+bash tool/install_macos.command
+```
+
+Le script compile la version native, la place dans `~/Applications/MyAgenda.app` et l'ouvre. Une éventuelle installation précédente est conservée dans le même dossier avec un suffixe de sauvegarde. Le script reconnaît aussi Flutter installé dans `~/Developer/flutter`. Il sélectionne Xcode pour cette commande, sans modifier la configuration système.
+
+Pour développer : `flutter run -d macos`. Les données macOS et iPhone restent séparées dans cette V1 locale.
 
 ## Sur votre iPhone (depuis un Mac)
 
@@ -95,7 +107,14 @@ flutter build web --release
 
 Tests : réservations imbriquées, événements traversant minuit, pauses, horaires, échéances, dates minimales, priorités, persistance CRUD, sauvegarde corrompue, chronomètres exclusifs, création de tâche et sous-tâche, focus, navigation mobile et bureau.
 
-La CI GitHub exécute analyse, tests et compilation Web à chaque push/PR. Elle produit une archive de build, **sans publier de site**.
+La CI GitHub exécute analyse, tests et compilation Web à chaque push/PR. Un job Apple compile aussi macOS et iOS sans signature de distribution, et produit une archive macOS. Une compilation iOS sans signature ne permet pas l'installation sur un téléphone : celle-ci exige votre équipe Apple et le provisionnement dans Xcode. Aucun site n'est publié par la CI.
+
+### Correctifs 0.1.1
+
+- Modifier une tâche annulée conserve son statut ; la rouvrir revalide son ancien créneau pour éviter un chevauchement.
+- Le mode Focus ne réactive plus une tâche annulée ou terminée depuis un écran resté ouvert.
+- Repartir avec un espace vide conserve les horaires, les jours travaillés et le thème choisis.
+- Cible native macOS, icône MyAgenda, fenêtre redimensionnable et script d'installation utilisateur.
 
 ## Suite après validation
 

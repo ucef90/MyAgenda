@@ -8,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:my_agenda/app.dart';
+import 'package:my_agenda/models/task.dart';
 import 'package:my_agenda/repositories/workspace_store.dart';
 
 void main() {
@@ -103,6 +104,42 @@ void main() {
       await tester.pumpWidget(const SizedBox());
     }
   });
+  testWidgets(
+    'Editing a cancelled task keeps it cancelled and focus unavailable',
+    (tester) async {
+      await launch(tester);
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(MyAgendaApp)),
+      );
+      final store = container.read(workspaceProvider.notifier);
+      store.upsert(
+        const Task(
+          id: 'cancelled',
+          title: 'Formation annulée',
+          status: TaskStatus.cancelled,
+        ),
+      );
+      container.read(routerProvider).go('/task/cancelled');
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Modifier'));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Que devez-vous faire ?'),
+        'Formation reportée',
+      );
+      await tester.ensureVisible(find.text('Enregistrer'));
+      await tester.tap(find.text('Enregistrer'));
+      await tester.pumpAndSettle();
+      expect(store.state.tasks.last.title, 'Formation reportée');
+      expect(store.state.tasks.last.status, TaskStatus.cancelled);
+      container.read(routerProvider).go('/focus/cancelled');
+      await tester.pumpAndSettle();
+      expect(find.text('Tâche annulée'), findsOneWidget);
+      expect(find.text('Reprendre'), findsNothing);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
   testWidgets('Capture review screens when explicitly requested', (
     tester,
   ) async {

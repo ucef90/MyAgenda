@@ -90,6 +90,8 @@ class _TaskFormState extends ConsumerState<TaskForm> {
       scheduledAt: _scheduled,
       status: widget.task?.status == TaskStatus.completed
           ? TaskStatus.completed
+          : widget.task?.status == TaskStatus.cancelled
+          ? TaskStatus.cancelled
           : widget.task?.status == TaskStatus.inProgress
           ? TaskStatus.inProgress
           : _scheduled != null

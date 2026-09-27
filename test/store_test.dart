@@ -84,6 +84,60 @@ void main() {
     );
     expect(store.state.tasks.length, 1);
   });
+  test('Reopening a cancelled task rechecks its old reservation', () {
+    store.savePreferences(const Preferences(weekdays: [1, 2, 3, 4, 5, 6, 7]));
+    final tomorrow = DateTime.now().add(const Duration(days: 1));
+    final start = DateTime(tomorrow.year, tomorrow.month, tomorrow.day, 9);
+    final first = Task(id: 'first', title: 'Formation', scheduledAt: start);
+    store.upsert(first);
+    store.setStatus(first, TaskStatus.cancelled);
+    final cancelled = store.state.tasks.single;
+    final second = Task(id: 'second', title: 'Réunion', scheduledAt: start);
+    store.upsert(second);
+
+    expect(
+      () => store.setStatus(cancelled, TaskStatus.planned),
+      throwsStateError,
+    );
+    expect(store.state.tasks.first.status, TaskStatus.cancelled);
+    store.setStatus(second, TaskStatus.cancelled);
+    store.setStatus(cancelled, TaskStatus.planned);
+    expect(store.state.tasks.last.status, TaskStatus.planned);
+  });
+  test('Closed tasks cannot restart a focus timer through a stale screen', () {
+    const task = Task(id: 'closed', title: 'Support');
+    store.upsert(task);
+    store.setStatus(task, TaskStatus.cancelled);
+    expect(() => store.startFocus(task), throwsStateError);
+    expect(store.state.tasks.single.runningSince, isNull);
+    expect(store.state.tasks.single.status, TaskStatus.cancelled);
+    store.setStatus(store.state.tasks.single, TaskStatus.completed);
+    expect(() => store.startFocus(task), throwsStateError);
+    expect(store.state.tasks.single.status, TaskStatus.completed);
+  });
+  test(
+    'Starting with an empty workspace keeps all personal preferences',
+    () async {
+      const preferences = Preferences(
+        name: 'Youssef',
+        workStart: 480,
+        workEnd: 1020,
+        breakStart: 720,
+        breakEnd: 750,
+        weekdays: [1, 3, 5],
+        dark: true,
+      );
+      store.savePreferences(preferences);
+      store.upsert(const Task(id: 'demo', title: 'Exemple'));
+      store.clearDemo();
+      await store.flush();
+      final reloaded = WorkspaceStore(prefs);
+      expect(reloaded.state.tasks, isEmpty);
+      expect(reloaded.state.demo, isFalse);
+      expect(reloaded.state.preferences.toJson(), preferences.toJson());
+      reloaded.dispose();
+    },
+  );
   test(
     'Corrupt local data is preserved and not silently replaced with demo data',
     () async {

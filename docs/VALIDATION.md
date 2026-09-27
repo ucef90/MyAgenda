@@ -21,6 +21,11 @@
 
 ## Limites à valider explicitement
 
+- Sur Mac : lancer `bash tool/install_macos.command`, vérifier l'ouverture depuis Applications et la conservation des données après fermeture.
+- Annuler une tâche planifiée, réserver le créneau avec une autre tâche, puis essayer de rouvrir la première : le conflit doit être signalé.
+- Modifier le titre d'une tâche annulée : elle doit rester annulée.
+- Personnaliser les horaires et le thème, puis effacer les données de découverte : les préférences doivent rester conservées.
+
 - Le chronomètre mesure le temps écoulé, y compris en arrière-plan, tant qu'il n'est pas arrêté.
 - Pas de rappel système ni de notification push dans la V1 locale.
 - Les blocs agenda sont déplacés sur les heures de la grille. Pour une heure précise, modifier la tâche.

@@ -184,7 +184,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           const SizedBox(height: 28),
           const Center(
             child: Text(
-              '$appName · 0.1.0\n$appTagline',
+              '$appName · 0.1.1\n$appTagline',
               textAlign: TextAlign.center,
               style: TextStyle(color: AppColors.muted, fontSize: 13),
             ),
