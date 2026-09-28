@@ -40,6 +40,8 @@ class Preferences {
   final int workStart, workEnd, breakStart, breakEnd;
   final List<int> weekdays;
   final bool dark;
+  final bool remindersEnabled, liveActivitiesEnabled;
+  final int reminderLeadMinutes;
   final List<PersonalGoal> goals;
   final int personalStart, personalEnd, bufferMinutes;
   final List<int> personalDays;
@@ -52,6 +54,9 @@ class Preferences {
     this.breakEnd = 780,
     this.weekdays = const [1, 2, 3, 4, 5],
     this.dark = false,
+    this.remindersEnabled = false,
+    this.liveActivitiesEnabled = false,
+    this.reminderLeadMinutes = 5,
     this.goals = const [],
     this.personalStart = 480,
     this.personalEnd = 1260,
@@ -67,6 +72,9 @@ class Preferences {
     int? breakEnd,
     List<int>? weekdays,
     bool? dark,
+    bool? remindersEnabled,
+    bool? liveActivitiesEnabled,
+    int? reminderLeadMinutes,
     List<PersonalGoal>? goals,
     int? personalStart,
     int? personalEnd,
@@ -81,6 +89,9 @@ class Preferences {
     breakEnd: breakEnd ?? this.breakEnd,
     weekdays: weekdays ?? this.weekdays,
     dark: dark ?? this.dark,
+    remindersEnabled: remindersEnabled ?? this.remindersEnabled,
+    liveActivitiesEnabled: liveActivitiesEnabled ?? this.liveActivitiesEnabled,
+    reminderLeadMinutes: reminderLeadMinutes ?? this.reminderLeadMinutes,
     goals: goals ?? this.goals,
     personalStart: personalStart ?? this.personalStart,
     personalEnd: personalEnd ?? this.personalEnd,
@@ -103,6 +114,9 @@ class Preferences {
     'breakEnd': breakEnd,
     'weekdays': weekdays,
     'dark': dark,
+    'remindersEnabled': remindersEnabled,
+    'liveActivitiesEnabled': liveActivitiesEnabled,
+    'reminderLeadMinutes': reminderLeadMinutes,
     'goals': goals.map((g) => g.toJson()).toList(),
     'personalStart': personalStart,
     'personalEnd': personalEnd,
@@ -118,6 +132,9 @@ class Preferences {
     breakEnd: j['breakEnd'],
     weekdays: List<int>.from(j['weekdays']),
     dark: j['dark'] ?? false,
+    remindersEnabled: j['remindersEnabled'] ?? false,
+    liveActivitiesEnabled: j['liveActivitiesEnabled'] ?? false,
+    reminderLeadMinutes: j['reminderLeadMinutes'] ?? 5,
     goals: (j['goals'] as List? ?? [])
         .map((g) => PersonalGoal.fromJson(Map<String, dynamic>.from(g)))
         .toList(),

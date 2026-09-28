@@ -8,7 +8,7 @@ Application **Flutter / Dart**, en français, pour organiser tâches personnelle
 
 <img src="docs/screenshots/today.png" width="240" alt="Accueil Aujourd’hui" /> <img src="docs/screenshots/tasks.png" width="240" alt="Mes tâches" /> <img src="docs/screenshots/assistant.png" width="240" alt="Assistant personnel" />
 
-## Version livrée : 0.2.0 — locale
+## Version livrée : 0.3.0 — locale
 
 Le projet suit les trois documents de conception : **valider la V1 visuelle avant de connecter FastAPI**. Il démarre avec un jeu de données de découverte daté du jour du premier lancement. Les modifications sont conservées sur l'appareil. Dans Paramètres, « Effacer les données de découverte » permet de repartir à vide (cela efface aussi vos ajouts : exporter avant).
 
@@ -26,7 +26,16 @@ Le projet suit les trois documents de conception : **valider la V1 visuelle avan
 | Paramètres | Prénom, jours et horaires, pause, thème sombre, copie d'une sauvegarde JSON |
 | Plateformes | Projets iOS, Android, macOS et Web inclus |
 
-**Non inclus à ce stade** : compte/authentification, serveur, synchronisation, notifications locales/push, pièces jointes autres que les images, liens publics avec expiration, calendrier externe, fractionnement automatique, redimensionnement des blocs agenda, récurrence, facturation. L'aperçu client est explicitement local ; aucun faux lien n'est généré. Le texte copié ne se met pas à jour automatiquement.
+**Non inclus à ce stade** : compte/authentification, serveur, synchronisation, notifications sur Mac/Android/Web et push distant, pièces jointes autres que les images, liens publics avec expiration, calendrier externe, fractionnement automatique, redimensionnement des blocs agenda, récurrence, facturation. L'aperçu client est explicitement local ; aucun faux lien n'est généré. Le texte copié ne se met pas à jour automatiquement.
+
+## Nouveautés 0.3.0 — rappels iPhone
+
+- Réglages → Rappels & écran verrouillé : activation volontaire, autorisation iOS, rappel à l’heure de la tâche et en avance (0/5/10/15/30 minutes), bouton de test et accès aux réglages système.
+- Rappels locaux natifs, livrés même application fermée. Une tâche sans créneau utilise son échéance ; une tâche sans date ne génère pas de rappel. Suppression des alertes obsolètes après modification, démarrage, suppression ou clôture dans l’application.
+- Les 60 alertes futures les plus proches sont programmées ; elles sont renouvelées à l’ouverture. Le résumé programmé et Concentration d’iOS restent prioritaires.
+- Activité en direct (iOS 16.2+) sur écran verrouillé et Dynamic Island compatible : tâche en cours, pause, créneau actuel et chronomètre. Touchez la carte pour ouvrir le détail. Une carte retirée manuellement est respectée ; désactivez/réactivez l’option pour la réafficher.
+- L’activité démarre pendant que MyAgenda est ouvert (par exemple après avoir touché un rappel ou lancé Focus). Aucun démarrage automatique en arrière-plan ni serveur push. Maximum système : 8 h actives et éventuellement 4 h supplémentaires sur écran verrouillé. La carte ne force pas l’écran à rester allumé. Après l’heure de fin prévue elle indique « Créneau écoulé » ; elle ne marque jamais la tâche comme terminée toute seule.
+- Extension WidgetKit `MyAgendaActivityExtension`, pont Swift natif, aucune nouvelle dépendance Flutter. Les préférences et tâches existantes sont conservées.
 
 ## Nouveautés 0.2.0
 
@@ -79,7 +88,8 @@ Pour développer : `flutter run -d macos`. Les données macOS et iPhone restent 
 3. Connecter l'iPhone au Mac, accepter la relation de confiance et activer le mode développeur si demandé.
 4. Dans le dépôt, exécuter `flutter pub get`, puis `open ios/Runner.xcworkspace`.
 5. Dans Xcode, sélectionner **Runner → Signing & Capabilities → Team**, choisir votre équipe Apple et vérifier un identifiant de bundle unique.
-6. Sélectionner l'iPhone dans Xcode ou lancer `flutter devices`, puis `flutter run -d <identifiant_iphone>`.
+6. Dans **Signing & Capabilities**, sélectionner la même **Team** pour **Runner** et **MyAgendaActivityExtension** ; laisser la signature automatique.
+7. Sélectionner l'iPhone dans Xcode ou lancer `flutter devices`, puis `flutter run --release -d <identifiant_iphone>`.
 
 La signature Apple se configure sur votre Mac. Aucun certificat, compte Apple ou profil de provisionnement n'est inclus. La durée et les possibilités d'installation dépendent de votre type de compte Apple. Les tests physiques iPhone et Android restent à réaliser ; les tests locaux de ce dépôt n'équivalent pas à une validation sur appareil.
 
@@ -136,6 +146,6 @@ La CI GitHub exécute analyse, tests et compilation Web à chaque push/PR. Un jo
 1. Valider ergonomie et parcours sur l'iPhone.
 2. Construire FastAPI / PostgreSQL / SQLAlchemy / Alembic et l'authentification, avec tests d'isolation des données entre utilisateurs.
 3. Remplacer le stockage local par un repository synchronisé, avec migration de cette V1.
-4. Ajouter notifications locales et synchronisation des images.
+4. Ajouter rappels sur les autres plateformes et synchronisation des images.
 5. Ajouter partage sécurisé, tokens révocables et expirables, filtrage strict des données publiques ; puis portail client.
 6. Préparer OVH, Docker Compose, HTTPS et sauvegardes. Aucun déploiement OVH ou App Store n'a été effectué.

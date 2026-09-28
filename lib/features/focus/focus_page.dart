@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/format.dart';
 import '../../models/task.dart';
@@ -150,6 +151,11 @@ class FocusPage extends ConsumerWidget {
                     attempt(context, () => store.toggleItem(t, i.id)),
               ),
           ],
+          TextButton.icon(
+            onPressed: () => context.push('/alerts'),
+            icon: const Icon(Icons.lock_clock_outlined),
+            label: const Text('Afficher sur l’écran verrouillé'),
+          ),
           const SizedBox(height: 18),
           const Text(
             'Le chronomètre reste actif si vous quittez cet écran. Il ne s’arrête qu’avec Pause ou Terminer.',

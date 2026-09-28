@@ -16,6 +16,8 @@ import 'features/today/today_page.dart';
 import 'repositories/workspace_store.dart';
 import 'theme/app_theme.dart';
 import 'widgets/app_shell.dart';
+import 'widgets/alert_coordinator.dart';
+import 'features/settings/alerts_page.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final router = GoRouter(
@@ -43,6 +45,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/assistant/preferences',
         builder: (_, s) => const AssistantPreferencesPage(),
       ),
+      GoRoute(path: '/alerts', builder: (_, s) => const AlertsPage()),
       GoRoute(path: '/settings', builder: (_, s) => const SettingsPage()),
       GoRoute(
         path: '/client-preview',
@@ -66,6 +69,8 @@ class MyAgendaApp extends ConsumerWidget {
   const MyAgendaApp({super.key});
   @override
   Widget build(BuildContext context, WidgetRef ref) => MaterialApp.router(
+    builder: (context, child) =>
+        AlertCoordinator(child: child ?? const SizedBox()),
     title: appName,
     debugShowCheckedModeBanner: false,
     theme: appTheme(),

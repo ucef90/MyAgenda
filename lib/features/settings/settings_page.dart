@@ -75,6 +75,16 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             trailing: const Icon(Icons.chevron_right),
             onTap: () => context.push('/assistant/preferences'),
           ),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.notifications_active_outlined),
+            title: const Text('Rappels & écran verrouillé'),
+            subtitle: const Text(
+              'Notifications et activité en direct sur iPhone',
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push('/alerts'),
+          ),
           const SectionTitle('Profil'),
           TextField(
             controller: _name,
@@ -199,12 +209,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           ],
           const SectionTitle('Cette première version'),
           const Text(
-            'Tâches, images, croquis, objectifs, assistant, planning et focus sont utilisables localement. La connexion serveur, les rappels système et les liens publics clients viendront après validation de l’interface.',
+            'Tâches, images, croquis, objectifs, assistant, planning et focus sont utilisables localement. Les rappels et activités en direct sont disponibles sur iPhone. La connexion serveur et les liens publics clients ne sont pas encore disponibles.',
           ),
           const SizedBox(height: 28),
           const Center(
             child: Text(
-              '$appName · 0.2.0\n$appTagline',
+              '$appName · 0.3.0\n$appTagline',
               textAlign: TextAlign.center,
               style: TextStyle(color: AppColors.muted, fontSize: 13),
             ),
@@ -237,8 +247,13 @@ class RemindersPage extends ConsumerWidget {
       body: PageBody(
         children: [
           const Text(
-            'Vos prochaines échéances. Les rappels système ne sont pas encore activés dans cette version.',
+            'Vos prochaines échéances. Activez les rappels sur iPhone pour recevoir une alerte.',
             style: TextStyle(color: AppColors.muted),
+          ),
+          TextButton.icon(
+            onPressed: () => context.push('/alerts'),
+            icon: const Icon(Icons.notifications_outlined),
+            label: const Text('Configurer mes rappels'),
           ),
           const SizedBox(height: 20),
           if (list.isEmpty)

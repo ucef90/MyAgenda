@@ -270,7 +270,8 @@ class WorkspaceStore extends StateNotifier<Workspace> {
   }
 
   void savePreferences(Preferences p) {
-    if (p.personalStart < 0 ||
+    if (![0, 5, 10, 15, 30].contains(p.reminderLeadMinutes) ||
+        p.personalStart < 0 ||
         p.personalEnd > 1440 ||
         p.personalStart >= p.personalEnd ||
         p.personalDays.isEmpty ||
