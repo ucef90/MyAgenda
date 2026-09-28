@@ -31,6 +31,7 @@ int _counter = 0;
 
 class WorkspaceStore extends StateNotifier<Workspace> {
   final SharedPreferences prefs;
+  Workspace get snapshot => state;
   String? persistenceError;
   bool _corruptOnLoad = false;
   Future<void> _writes = Future.value();

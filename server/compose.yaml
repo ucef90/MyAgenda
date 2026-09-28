@@ -1,0 +1,29 @@
+services:
+  bridge:
+    build: .
+    restart: unless-stopped
+    read_only: true
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    volumes:
+      - agenda_data:/app/data
+    networks: [agenda]
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      MYAGENDA_DOMAIN: ${MYAGENDA_DOMAIN:?Renseignez le domaine du serveur dans .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks: [agenda]
+volumes:
+  agenda_data:
+  caddy_data:
+  caddy_config:
+networks:
+  agenda:

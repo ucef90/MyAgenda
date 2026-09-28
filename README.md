@@ -8,7 +8,7 @@ Application **Flutter / Dart**, en français, pour organiser tâches personnelle
 
 <img src="docs/screenshots/today.png" width="240" alt="Accueil Aujourd’hui" /> <img src="docs/screenshots/tasks.png" width="240" alt="Mes tâches" /> <img src="docs/screenshots/assistant.png" width="240" alt="Assistant personnel" />
 
-## Version livrée : 0.4.0 — locale
+## Version 0.5.0 — agenda local et connexion privée à Work
 
 Le projet suit les trois documents de conception : **valider la V1 visuelle avant de connecter FastAPI**. Il démarre avec un jeu de données de découverte daté du jour du premier lancement. Les modifications sont conservées sur l'appareil. Dans Paramètres, « Effacer les données de découverte » permet de repartir à vide (cela efface aussi vos ajouts : exporter avant).
 
@@ -26,7 +26,7 @@ Le projet suit les trois documents de conception : **valider la V1 visuelle avan
 | Paramètres | Prénom, jours et horaires, pause, thème sombre, copie d'une sauvegarde JSON |
 | Plateformes | Projets iOS, Android, macOS et Web inclus |
 
-**Non inclus à ce stade** : compte/authentification, serveur, synchronisation, notifications sur Mac/Android/Web et push distant, pièces jointes autres que les images et l’audio, liens publics avec expiration, Gmail connecté, fractionnement automatique, redimensionnement des blocs agenda, récurrence, facturation. L'aperçu client est explicitement local ; aucun faux lien n'est généré. Le texte copié ne se met pas à jour automatiquement.
+**Non inclus à ce stade** : comptes multi-utilisateurs, fusion des agendas entre appareils, notifications sur Mac/Android/Web et push distant, pièces jointes autres que les images et l’audio, liens publics avec expiration, analyse Gmail autonome en arrière-plan, fractionnement automatique, redimensionnement des blocs agenda, récurrence, facturation. L'aperçu client est explicitement local ; aucun faux lien n'est généré. Le texte copié ne se met pas à jour automatiquement.
 
 ## Nouveautés 0.4.0 — tâches, voix et préparation
 
@@ -39,7 +39,7 @@ Le projet suit les trois documents de conception : **valider la V1 visuelle avan
 - **Formation** : support préparé, bon de commande signé, mail envoyé — trois états « À vérifier », « À faire », « Oui, confirmé ». Confirmation manuelle, sans inférence à partir d’une absence de preuve. Rappel de préparation 24 h avant, si les rappels sont activés et cette heure est encore à venir.
 - **Écran verrouillé** : progression native du temps, prochain rendez-vous, liens « Terminé » et « Pas fini » ouvrant l’application pour enregistrer le statut. Notification de fin de créneau avec actions, en plus des rappels de début. L’activité doit toujours être démarrée depuis l’app ; aucune bascule automatique à une nouvelle activité lorsque l’app est fermée.
 
-**Connexion Gmail / ChatGPT Work non livrée** : la version n’utilise aucun accès mail et ne se présente pas comme connectée. Il faut une application Google OAuth pour iOS (projet, écran de consentement et client correspondant au bundle), des autorisations de lecture Gmail et un stockage sécurisé des jetons avant de construire cette analyse. Les accès des connecteurs ChatGPT ne sont ni extraits ni réutilisés par l’app. Aucun secret n’est inclus dans le dépôt. La page Agenda & connexions explique cet état.
+**Connexion Gmail / ChatGPT Work (0.5)** : un serveur privé MCP avec OAuth et un écran d’association sont fournis. Work utilise son propre connecteur Gmail et envoie des propositions documentées, que vous validez dans MyAgenda. Le déploiement HTTPS et l’autorisation de Work restent nécessaires pour activer la connexion. Aucun secret ni accès de production n’est inclus. Voir [le guide de connexion](docs/chatgpt-work.md).
 
 ## Nouveautés 0.3.0 — rappels iPhone
 
@@ -162,3 +162,7 @@ La CI GitHub exécute analyse, tests et compilation Web à chaque push/PR. Un jo
 4. Ajouter rappels sur les autres plateformes et synchronisation des images.
 5. Ajouter partage sécurisé, tokens révocables et expirables, filtrage strict des données publiques ; puis portail client.
 6. Préparer OVH, Docker Compose, HTTPS et sauvegardes. Aucun déploiement OVH ou App Store n'a été effectué.
+
+## Connexion ChatGPT Work · 0.5
+
+La connexion privée à Work et les propositions de préparation avec références Gmail sont développées. Elles nécessitent le déploiement du serveur HTTPS et l’association des appareils. Voir [le guide de connexion](docs/chatgpt-work.md). Aucun serveur de production ni compte Gmail n’est préconfiguré dans le dépôt.

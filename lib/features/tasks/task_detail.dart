@@ -9,6 +9,7 @@ import '../../widgets/common.dart';
 import '../planning/planning_sheet.dart';
 import 'task_form.dart';
 import '../audio/audio_editor.dart';
+import '../connections/work_connection_page.dart';
 import '../../widgets/task_status_badge.dart';
 import '../../theme/task_colors.dart';
 import '../attachments/attachment_editor.dart';
@@ -156,7 +157,7 @@ class _TaskDetailState extends ConsumerState<TaskDetail> {
           if (t.isTraining) ...[
             const SectionTitle('Préparer cette formation'),
             Text(
-              '${t.preparationDone}/3 points confirmés. Les confirmations ci-dessous sont manuelles.',
+              '${t.preparationDone}/3 points confirmés. Vous validez chaque confirmation, avec ou sans proposition de Work.',
             ),
             for (final step in preparationSteps.entries)
               Padding(
@@ -168,6 +169,24 @@ class _TaskDetailState extends ConsumerState<TaskDetail> {
                       step.value,
                       style: const TextStyle(fontWeight: FontWeight.w600),
                     ),
+                    if (t.preparationEvidence[step.key] != null) ...[
+                      const Text(
+                        'Proposition Work acceptée',
+                        style: TextStyle(color: AppColors.teal),
+                      ),
+                      Text(
+                        t.preparationEvidence[step.key]!['reason'] as String? ??
+                            '',
+                      ),
+                      WorkEvidenceSources(
+                        sources:
+                            (t.preparationEvidence[step.key]!['sources']
+                                        as List? ??
+                                    [])
+                                .map((s) => Map<String, dynamic>.from(s))
+                                .toList(),
+                      ),
+                    ],
                     const SizedBox(height: 5),
                     Wrap(
                       spacing: 6,
@@ -186,6 +205,9 @@ class _TaskDetailState extends ConsumerState<TaskDetail> {
                               context,
                               () => store.upsert(
                                 t.copyWith(
+                                  preparationEvidence: {
+                                    ...t.preparationEvidence,
+                                  }..remove(step.key),
                                   preparation: {
                                     ...t.preparation,
                                     step.key: state,

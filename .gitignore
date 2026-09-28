@@ -43,3 +43,12 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Private MyAgenda connector state and dependencies
+/server/node_modules/
+/server/data/
+/server/.env
+/server/*.sqlite*
+/server/generated/
+
+/server/myagenda-mcp.json

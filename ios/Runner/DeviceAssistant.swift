@@ -3,6 +3,7 @@ import UIKit
 import AVFoundation
 import Speech
 import EventKit
+import Security
 
 /// Device features keep recordings in the app sandbox. No account tokens or
 /// calendar content are embedded in the application bundle.
@@ -28,6 +29,51 @@ final class DeviceAssistant: NSObject, AVAudioPlayerDelegate {
     private func error(_ message: String, _ code: String = "device") -> FlutterError {
         FlutterError(code: code, message: message, details: nil)
     }
+
+    // Tokens stay in this device's Keychain and are never exported with tasks.
+    private func handleWork(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
+        let query: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
+                                   kSecAttrService as String: "fr.beyondexpertise.myagenda.work",
+                                   kSecAttrAccount as String: "private-device"]
+        if call.method == "workOpenMail" {
+            guard let raw = call.arguments as? String, let url = URL(string: raw),
+                  url.scheme == "https", url.host == "mail.google.com", url.user == nil,
+                  url.password == nil, url.port == nil else {
+                result(FlutterError(code: "url", message: "Lien Gmail invalide.", details: nil)); return
+            }
+            UIApplication.shared.open(url, options: [:]) { opened in
+                result(opened ? nil : FlutterError(code: "url", message: "Gmail ne peut pas être ouvert.", details: nil))
+            }
+            return
+        }
+        var status: OSStatus = errSecSuccess
+        switch call.method {
+        case "workRead":
+            var read = query
+            read[kSecReturnData as String] = true
+            read[kSecMatchLimit as String] = kSecMatchLimitOne
+            var value: CFTypeRef?
+            status = SecItemCopyMatching(read as CFDictionary, &value)
+            if status == errSecItemNotFound { result(nil); return }
+            if status == errSecSuccess, let data = value as? Data, let text = String(data: data, encoding: .utf8) { result(text); return }
+        case "workWrite":
+            guard let text = call.arguments as? String, let data = text.data(using: .utf8), data.count <= 8192 else {
+                result(FlutterError(code: "keychain", message: "Configuration invalide.", details: nil)); return
+            }
+            let attributes: [String: Any] = [kSecValueData as String: data,
+                kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly]
+            status = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
+            if status == errSecItemNotFound {
+                status = SecItemAdd(query.merging(attributes) { _, new in new } as CFDictionary, nil)
+            }
+        case "workDelete":
+            status = SecItemDelete(query as CFDictionary)
+            if status == errSecItemNotFound { status = errSecSuccess }
+        default: result(FlutterMethodNotImplemented); return
+        }
+        if status == errSecSuccess { result(nil) }
+        else { result(FlutterError(code: "keychain", message: "Déverrouillez cet appareil pour accéder à la connexion privée.", details: nil)) }
+    }
     private func folder() throws -> URL {
         let root = try FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
         let directory = root.appendingPathComponent("MyAgendaAudio", isDirectory: true)
@@ -39,6 +85,7 @@ final class DeviceAssistant: NSObject, AVAudioPlayerDelegate {
         return try folder().appendingPathComponent(id).appendingPathExtension("m4a")
     }
     private func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
+        if call.method.hasPrefix("work") { handleWork(call, result: result); return }
         switch call.method {
         case "recordStart":
             guard recorder == nil, recordingURL == nil else { result(error("Un enregistrement est déjà ouvert.")); return }

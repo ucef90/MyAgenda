@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import '../../repositories/work_connection_store.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/format.dart';
 import '../../repositories/workspace_store.dart';
@@ -190,16 +192,20 @@ class _ConnectionsPageState extends ConsumerState<ConnectionsPage> {
           child: const Text('Désactiver l’actualisation'),
         ),
         const SectionTitle('Gmail & ChatGPT Work'),
-        const ListTile(
+        ListTile(
           contentPadding: EdgeInsets.zero,
-          leading: Icon(Icons.link_off),
-          title: Text('Gmail : non connecté'),
+          leading: const Icon(Icons.auto_awesome),
+          title: const Text('ChatGPT Work'),
           subtitle: Text(
-            'L’analyse automatique des mails nécessite une connexion Google propre à MyAgenda. Aucune boîte mail n’est consultée par cette version.',
+            ref.watch(workConnectionProvider).connected
+                ? '${ref.watch(workConnectionProvider).proposals.length} propositions à vérifier · Voir la connexion'
+                : 'Relier mon agenda et vérifier mes formations avec Gmail',
           ),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => context.push('/work'),
         ),
         const Text(
-          'Les connexions de ChatGPT Work restent dans ChatGPT. Pour le moment, confirmez les trois points de préparation dans chaque formation. « À vérifier » signifie que MyAgenda ne dispose pas encore de confirmation.',
+          'Work analyse les mails via votre connexion Gmail et propose des confirmations à valider ici.',
         ),
       ],
     ),

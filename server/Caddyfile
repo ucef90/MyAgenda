@@ -1,0 +1,4 @@
+{$MYAGENDA_DOMAIN} {
+  # No access log: request URLs may carry OAuth codes.
+  reverse_proxy bridge:8787
+}

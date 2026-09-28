@@ -51,6 +51,7 @@ class Task {
   final TaskCategory category;
   final List<AudioNote> audioNotes;
   final Map<String, bool?> preparation;
+  final Map<String, Map<String, dynamic>> preparationEvidence;
   final String? calendarEventId, calendarName;
   final TaskColor color;
   final bool personalTime;
@@ -71,6 +72,7 @@ class Task {
     this.category = TaskCategory.automatic,
     this.audioNotes = const [],
     this.preparation = const {},
+    this.preparationEvidence = const {},
     this.calendarEventId,
     this.calendarName,
     this.color = TaskColor.automatic,
@@ -116,6 +118,7 @@ class Task {
     TaskCategory? category,
     List<AudioNote>? audioNotes,
     Map<String, bool?>? preparation,
+    Map<String, Map<String, dynamic>>? preparationEvidence,
     String? calendarEventId,
     String? calendarName,
     TaskColor? color,
@@ -142,6 +145,7 @@ class Task {
     category: category ?? this.category,
     audioNotes: audioNotes ?? this.audioNotes,
     preparation: preparation ?? this.preparation,
+    preparationEvidence: preparationEvidence ?? this.preparationEvidence,
     calendarEventId: calendarEventId ?? this.calendarEventId,
     calendarName: calendarName ?? this.calendarName,
     color: color ?? this.color,
@@ -179,6 +183,7 @@ class Task {
     'category': category.name,
     'audioNotes': audioNotes.map((a) => a.toJson()).toList(),
     'preparation': preparation,
+    'preparationEvidence': preparationEvidence,
     'calendarEventId': calendarEventId,
     'calendarName': calendarName,
     'color': color.name,
@@ -210,6 +215,9 @@ class Task {
         .map((a) => AudioNote.fromJson(Map<String, dynamic>.from(a)))
         .toList(),
     preparation: Map<String, bool?>.from(j['preparation'] ?? {}),
+    preparationEvidence: (j['preparationEvidence'] as Map? ?? {}).map(
+      (k, v) => MapEntry(k as String, Map<String, dynamic>.from(v)),
+    ),
     calendarEventId: j['calendarEventId'],
     calendarName: j['calendarName'],
     color:
