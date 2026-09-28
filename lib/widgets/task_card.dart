@@ -6,6 +6,7 @@ import '../models/task.dart';
 import '../repositories/workspace_store.dart';
 import '../theme/app_theme.dart';
 import 'common.dart';
+import 'task_status_badge.dart';
 import '../theme/task_colors.dart';
 
 class TaskCard extends ConsumerWidget {
@@ -18,6 +19,11 @@ class TaskCard extends ConsumerWidget {
     final now = ref.watch(clockProvider).valueOrNull ?? DateTime.now();
     final color = task.displayColor;
     return Card(
+      color: task.blockColor(context),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(color: color.withValues(alpha: .25)),
+      ),
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
         onTap: () => context.push('/task/${task.id}'),
@@ -56,7 +62,7 @@ class TaskCard extends ConsumerWidget {
                           task.professional
                               ? w.clientName(task.clientId)
                               : task.project.isEmpty
-                              ? 'Personnel'
+                              ? task.resolvedCategory.label
                               : task.project,
                           style: TextStyle(fontSize: 13, color: color),
                         ),
@@ -98,6 +104,18 @@ class TaskCard extends ConsumerWidget {
                   ),
                 ],
               ),
+              if (task.isTraining && task.isOpen)
+                Padding(
+                  padding: const EdgeInsets.only(top: 10),
+                  child: Text(
+                    '🎓 Préparation : ${task.preparationDone}/3 confirmés',
+                    style: TextStyle(
+                      color: color,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
               const SizedBox(height: 14),
               Wrap(
                 spacing: 12,
@@ -136,9 +154,8 @@ class TaskCard extends ConsumerWidget {
                         color: AppColors.muted,
                       ),
                     ),
-                  if (task.overdueAt(now))
-                    const Tag('En retard', color: AppColors.red)
-                  else if (task.priority.index >= 2)
+                  TaskStatusBadge(task: task, now: now),
+                  if (task.priority.index >= 2)
                     Tag(
                       task.priority.label,
                       color: task.priority == Priority.urgent

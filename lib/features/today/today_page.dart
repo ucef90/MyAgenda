@@ -9,6 +9,7 @@ import '../../theme/app_theme.dart';
 import '../../widgets/common.dart';
 import '../../widgets/task_card.dart';
 import 'timeline.dart';
+import '../../services/day_progress.dart';
 import '../assistant/assistant_page.dart';
 
 class TodayPage extends ConsumerWidget {
@@ -32,14 +33,18 @@ class TodayPage extends ConsumerWidget {
         active ??
         scheduled
             .where((t) => t.isOpen && t.scheduledEnd!.isAfter(now))
-            .firstOrNull;
+            .firstOrNull ??
+        scheduled.where((t) => t.isOpen).firstOrNull;
     final planned = scheduled.fold(0, (s, t) => s + t.minutes);
     final free = const Planner()
         .freeSlots(now, w.preferences, w.tasks, notBefore: now)
         .fold(0, (s, t) => s + t.minutes);
-    final dayFree = const Planner()
-        .freeSlots(now, w.preferences, w.tasks)
-        .fold(0, (s, t) => s + t.minutes);
+    final progress = DayProgress.calculate(w.tasks, now);
+    final paceColor = switch (progress.pace) {
+      DayPace.behind => AppColors.red,
+      DayPace.onTime => AppColors.teal,
+      DayPace.ahead => const Color(0xFF0369A1),
+    };
     final urgent = w.tasks
         .where(
           (t) =>
@@ -110,6 +115,47 @@ class TodayPage extends ConsumerWidget {
             ),
           ),
         const SizedBox(height: 24),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '${(progress.fraction * 100).round()} % réalisés',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                    ),
+                    Text(
+                      progress.label,
+                      style: TextStyle(
+                        color: paceColor,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                LinearProgressIndicator(
+                  value: progress.fraction,
+                  minHeight: 9,
+                  borderRadius: BorderRadius.circular(8),
+                  color: paceColor,
+                  backgroundColor: paceColor.withValues(alpha: .12),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '${progress.completed}/${progress.total} tâches du jour terminées · rythme selon les fins de créneau prévues',
+                  style: const TextStyle(fontSize: 12, color: AppColors.muted),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 18),
         _FocusCard(task: next),
         const SizedBox(height: 18),
         const AssistantTeaser(),
@@ -138,18 +184,6 @@ class TodayPage extends ConsumerWidget {
                       ),
                     ),
                   ],
-                ),
-                const SizedBox(height: 20),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(5),
-                  child: LinearProgressIndicator(
-                    minHeight: 6,
-                    value: planned + dayFree == 0
-                        ? 0
-                        : planned / (planned + dayFree),
-                    backgroundColor: AppColors.indigo.withValues(alpha: .08),
-                    color: AppColors.indigo,
-                  ),
                 ),
               ],
             ),

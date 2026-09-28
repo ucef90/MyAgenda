@@ -7,6 +7,7 @@ import '../repositories/workspace_store.dart';
 import '../theme/app_theme.dart';
 import '../theme/task_colors.dart';
 import 'common.dart';
+import 'task_status_badge.dart';
 
 class TaskListRow extends ConsumerWidget {
   final Task task;
@@ -17,6 +18,11 @@ class TaskListRow extends ConsumerWidget {
     final done = task.status == TaskStatus.completed;
     final now = ref.watch(clockProvider).valueOrNull ?? DateTime.now();
     return Card(
+      color: task.blockColor(context),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(color: color.withValues(alpha: .25)),
+      ),
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
         onTap: () => context.push('/task/${task.id}'),
@@ -73,7 +79,7 @@ class TaskListRow extends ConsumerWidget {
                                     .watch(workspaceProvider)
                                     .clientName(task.clientId)
                               : task.project.isEmpty
-                              ? 'Personnel'
+                              ? task.resolvedCategory.label
                               : task.project,
                           style: TextStyle(
                             fontSize: 12,
@@ -104,9 +110,8 @@ class TaskListRow extends ConsumerWidget {
                               color: AppColors.muted,
                             ),
                           ),
-                        if (task.overdueAt(now))
-                          const Tag('En retard', color: AppColors.red)
-                        else if (task.priority.index >= 2)
+                        TaskStatusBadge(task: task, now: now),
+                        if (task.priority.index >= 2)
                           Tag(task.priority.label, color: AppColors.amber),
                         if (task.attachments.isNotEmpty)
                           Row(

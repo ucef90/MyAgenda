@@ -3,6 +3,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'core/config.dart';
+import 'features/connections/connections_page.dart';
 import 'features/assistant/assistant_page.dart';
 import 'features/assistant/assistant_preferences.dart';
 import 'features/calendar/calendar_page.dart';
@@ -45,6 +46,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/assistant/preferences',
         builder: (_, s) => const AssistantPreferencesPage(),
       ),
+      GoRoute(path: '/connections', builder: (_, s) => const ConnectionsPage()),
       GoRoute(path: '/alerts', builder: (_, s) => const AlertsPage()),
       GoRoute(path: '/settings', builder: (_, s) => const SettingsPage()),
       GoRoute(

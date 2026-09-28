@@ -8,6 +8,8 @@ import '../../theme/app_theme.dart';
 import '../../widgets/common.dart';
 import '../planning/planning_sheet.dart';
 import 'task_form.dart';
+import '../audio/audio_editor.dart';
+import '../../widgets/task_status_badge.dart';
 import '../../theme/task_colors.dart';
 import '../attachments/attachment_editor.dart';
 
@@ -85,6 +87,8 @@ class _TaskDetailState extends ConsumerState<TaskDetail> {
                 const Tag('En retard', color: AppColors.red),
             ],
           ),
+          const SizedBox(height: 12),
+          TaskStatusBadge(task: t, now: now),
           const SizedBox(height: 22),
           Text(t.title, style: Theme.of(context).textTheme.headlineLarge),
           const SizedBox(height: 10),
@@ -143,6 +147,66 @@ class _TaskDetailState extends ConsumerState<TaskDetail> {
             onChanged: (s) {
               if (s != null) attempt(context, () => store.setStatus(t, s));
             },
+          ),
+          if (t.calendarName != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 16),
+              child: Text('Importé de : ${t.calendarName}'),
+            ),
+          if (t.isTraining) ...[
+            const SectionTitle('Préparer cette formation'),
+            Text(
+              '${t.preparationDone}/3 points confirmés. Les confirmations ci-dessous sont manuelles.',
+            ),
+            for (final step in preparationSteps.entries)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      step.value,
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 5),
+                    Wrap(
+                      spacing: 6,
+                      children: [
+                        for (final state in <bool?>[null, false, true])
+                          ChoiceChip(
+                            label: Text(
+                              state == null
+                                  ? 'À vérifier'
+                                  : state
+                                  ? 'Oui, confirmé'
+                                  : 'À faire',
+                            ),
+                            selected: t.preparation[step.key] == state,
+                            onSelected: (_) => attempt(
+                              context,
+                              () => store.upsert(
+                                t.copyWith(
+                                  preparation: {
+                                    ...t.preparation,
+                                    step.key: state,
+                                  },
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+          ],
+          const SectionTitle('Notes audio'),
+          AudioNotesEditor(
+            value: t.audioNotes,
+            onChanged: (notes) => attempt(
+              context,
+              () => store.upsert(t.copyWith(audioNotes: notes)),
+            ),
           ),
           SectionTitle(
             'Photos & croquis',

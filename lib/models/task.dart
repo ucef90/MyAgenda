@@ -1,4 +1,6 @@
 import 'attachment.dart';
+import 'task_extras.dart';
+export 'task_extras.dart';
 
 enum TaskStatus { todo, planned, inProgress, completed, cancelled }
 
@@ -46,6 +48,10 @@ const _unset = Object();
 class Task {
   final String id, title, notes, project;
   final String? clientId, missionId, goalId;
+  final TaskCategory category;
+  final List<AudioNote> audioNotes;
+  final Map<String, bool?> preparation;
+  final String? calendarEventId, calendarName;
   final TaskColor color;
   final bool personalTime;
   final List<TaskAttachment> attachments;
@@ -62,6 +68,11 @@ class Task {
     this.project = '',
     this.clientId,
     this.goalId,
+    this.category = TaskCategory.automatic,
+    this.audioNotes = const [],
+    this.preparation = const {},
+    this.calendarEventId,
+    this.calendarName,
     this.color = TaskColor.automatic,
     this.personalTime = false,
     this.attachments = const [],
@@ -79,8 +90,16 @@ class Task {
   });
   bool get isOpen =>
       status != TaskStatus.completed && status != TaskStatus.cancelled;
+  TaskCategory get resolvedCategory => category == TaskCategory.automatic
+      ? inferCategory(title, professional: professional)
+      : category;
+  bool get isTraining => resolvedCategory == TaskCategory.training;
+  int get preparationDone =>
+      preparationSteps.keys.where((k) => preparation[k] == true).length;
   bool overdueAt(DateTime now) =>
-      isOpen && deadline != null && deadline!.isBefore(now);
+      isOpen &&
+      ((deadline?.isBefore(now) ?? false) ||
+          (scheduledEnd?.isBefore(now) ?? false));
   DateTime? get scheduledEnd => scheduledAt?.add(Duration(minutes: minutes));
   int get completedItems => checklist.where((i) => i.done).length;
   double get progress => status == TaskStatus.completed
@@ -94,6 +113,11 @@ class Task {
           ? 0
           : now.difference(runningSince!).inSeconds.clamp(0, 31536000));
   Task copyWith({
+    TaskCategory? category,
+    List<AudioNote>? audioNotes,
+    Map<String, bool?>? preparation,
+    String? calendarEventId,
+    String? calendarName,
     TaskColor? color,
     bool? personalTime,
     List<TaskAttachment>? attachments,
@@ -115,6 +139,11 @@ class Task {
     List<ChecklistItem>? checklist,
   }) => Task(
     id: id,
+    category: category ?? this.category,
+    audioNotes: audioNotes ?? this.audioNotes,
+    preparation: preparation ?? this.preparation,
+    calendarEventId: calendarEventId ?? this.calendarEventId,
+    calendarName: calendarName ?? this.calendarName,
     color: color ?? this.color,
     personalTime: personalTime ?? this.personalTime,
     attachments: attachments ?? this.attachments,
@@ -147,6 +176,11 @@ class Task {
   );
   Map<String, dynamic> toJson() => {
     'id': id,
+    'category': category.name,
+    'audioNotes': audioNotes.map((a) => a.toJson()).toList(),
+    'preparation': preparation,
+    'calendarEventId': calendarEventId,
+    'calendarName': calendarName,
     'color': color.name,
     'personalTime': personalTime,
     'goalId': goalId,
@@ -169,6 +203,15 @@ class Task {
   };
   factory Task.fromJson(Map<String, dynamic> j) => Task(
     id: j['id'],
+    category:
+        TaskCategory.values.where((c) => c.name == j['category']).firstOrNull ??
+        TaskCategory.automatic,
+    audioNotes: (j['audioNotes'] as List? ?? [])
+        .map((a) => AudioNote.fromJson(Map<String, dynamic>.from(a)))
+        .toList(),
+    preparation: Map<String, bool?>.from(j['preparation'] ?? {}),
+    calendarEventId: j['calendarEventId'],
+    calendarName: j['calendarName'],
     color:
         TaskColor.values.where((c) => c.name == j['color']).firstOrNull ??
         TaskColor.automatic,

@@ -73,13 +73,18 @@ void main() {
       );
       final plan = ReminderPlan.build(w, now);
       expect(plan.pending.map((e) => e.id), [
+        'running-end',
         'scheduled-before',
         'scheduled-start',
         'deadline-before',
+        'scheduled-end',
         'deadline-start',
       ]);
-      expect(plan.pending[1].at, at);
-      expect(plan.pending[2].body, contains('Échéance'));
+      expect(plan.pending.firstWhere((e) => e.id == 'scheduled-start').at, at);
+      expect(
+        plan.pending.firstWhere((e) => e.id == 'deadline-before').body,
+        contains('Échéance'),
+      );
       expect(
         ReminderPlan.build(
           w.copyWith(preferences: const Preferences()),
@@ -109,7 +114,7 @@ void main() {
         now,
       );
       expect(plan.pending.length, 60);
-      expect(plan.omitted, 18);
+      expect(plan.omitted, 58);
       expect(plan.validEvents.containsKey('0-start'), true);
       expect(plan.pending.every((e) => e.at.isAfter(now)), true);
       expect(plan.pending.last.at.isBefore(tasks.last.scheduledAt!), true);

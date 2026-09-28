@@ -75,7 +75,15 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
                 'Du temps pour ce qui compte.',
                 style: TextStyle(color: AppColors.muted),
               ),
-              const SizedBox(height: 20),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: () => context.push('/connections'),
+                  icon: const Icon(Icons.sync),
+                  label: const Text('Importer mon agenda'),
+                ),
+              ),
+              const SizedBox(height: 8),
               Row(
                 children: [
                   IconButton(

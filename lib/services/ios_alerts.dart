@@ -6,8 +6,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/task.dart';
 import '../models/workspace.dart';
 
+String _reminderClock(DateTime date) =>
+    '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+
 class TaskReminder {
-  final String id, taskId, title, body;
+  final String id, taskId, title, body, kind;
   final DateTime at;
   const TaskReminder({
     required this.id,
@@ -15,9 +18,11 @@ class TaskReminder {
     required this.title,
     required this.body,
     required this.at,
+    this.kind = 'start',
   });
   Map<String, dynamic> toJson() => {
     'id': id,
+    'kind': kind,
     'taskId': taskId,
     'title': title,
     'body': body,
@@ -34,34 +39,77 @@ class ReminderPlan {
   factory ReminderPlan.build(Workspace w, DateTime now) {
     if (!w.preferences.remindersEnabled) return const ReminderPlan([], {}, 0);
     final events = <TaskReminder>[];
-    for (final task in w.tasks.where(
-      (t) => t.isOpen && t.runningSince == null,
-    )) {
+    for (final task in w.tasks.where((t) => t.isOpen)) {
       final at = task.scheduledAt ?? task.deadline;
-      if (at == null) continue;
-      final deadline = task.scheduledAt == null;
-      events.add(
-        TaskReminder(
-          id: '${task.id}-start',
-          taskId: task.id,
-          title: task.title,
-          body: deadline
-              ? 'Échéance maintenant. Ouvrez votre tâche.'
-              : 'C’est le moment · ${task.minutes} min prévues. Touchez pour ouvrir.',
-          at: at,
-        ),
-      );
-      final lead = w.preferences.reminderLeadMinutes;
-      if (lead > 0) {
+      final next = nextScheduledTask(w, task, now);
+      final nextText = next == null
+          ? ''
+          : ' Ensuite : ${next.title} à ${_reminderClock(next.scheduledAt!)}.';
+      if (at != null &&
+          task.runningSince == null &&
+          task.status != TaskStatus.inProgress) {
+        final deadline = task.scheduledAt == null;
         events.add(
           TaskReminder(
-            id: '${task.id}-before',
+            id: '${task.id}-start',
             taskId: task.id,
             title: task.title,
-            body: deadline
-                ? 'Échéance dans $lead minutes.'
-                : 'Votre tâche commence dans $lead minutes.',
-            at: at.subtract(Duration(minutes: lead)),
+            body:
+                (deadline
+                    ? 'Échéance maintenant.'
+                    : 'C’est le moment · ${task.minutes} min prévues.') +
+                nextText,
+            at: at,
+          ),
+        );
+        final lead = w.preferences.reminderLeadMinutes;
+        if (lead > 0) {
+          events.add(
+            TaskReminder(
+              id: '${task.id}-before',
+              taskId: task.id,
+              title: task.title,
+              body: deadline
+                  ? 'Échéance dans $lead minutes.'
+                  : 'Votre tâche commence dans $lead minutes.',
+              at: at.subtract(Duration(minutes: lead)),
+              kind: 'before',
+            ),
+          );
+        }
+      }
+      final end = task.runningSince != null
+          ? task.runningSince!.add(
+              Duration(seconds: task.minutes * 60 - task.elapsedSeconds),
+            )
+          : task.status == TaskStatus.inProgress
+          ? null
+          : task.scheduledEnd;
+      if (end != null) {
+        events.add(
+          TaskReminder(
+            id: '${task.id}-end',
+            taskId: task.id,
+            title: 'Créneau terminé · ${task.title}',
+            body:
+                'Avez-vous terminé ? Choisissez « Terminé » ou « Pas fini ». $nextText',
+            at: end,
+            kind: 'end',
+          ),
+        );
+      }
+      if (task.isTraining &&
+          task.preparationDone < 3 &&
+          task.scheduledAt != null) {
+        events.add(
+          TaskReminder(
+            id: '${task.id}-preparation',
+            taskId: task.id,
+            title: 'Formation à préparer · ${task.title}',
+            body:
+                '${task.preparationDone}/3 points confirmés. Vérifiez le support, le bon de commande et le mail.',
+            at: task.scheduledAt!.subtract(const Duration(days: 1)),
+            kind: 'preparation',
           ),
         );
       }
@@ -73,6 +121,23 @@ class ReminderPlan {
       for (final e in events) e.id: e.at.millisecondsSinceEpoch / 1000,
     }, (future.length - 60).clamp(0, future.length));
   }
+}
+
+Task? nextScheduledTask(Workspace w, Task current, DateTime now) {
+  final tasks =
+      w.tasks
+          .where(
+            (t) =>
+                t.id != current.id &&
+                t.isOpen &&
+                t.scheduledAt != null &&
+                t.scheduledAt!.isAfter(now) &&
+                (current.scheduledAt == null ||
+                    t.scheduledAt!.isAfter(current.scheduledAt!)),
+          )
+          .toList()
+        ..sort((a, b) => a.scheduledAt!.compareTo(b.scheduledAt!));
+  return tasks.firstOrNull;
 }
 
 Task? lockScreenTask(Workspace w, DateTime now) {
@@ -105,7 +170,13 @@ Map<String, dynamic>? liveTaskPayload(Workspace w, DateTime now) {
   final end = running
       ? start!.add(Duration(minutes: task.minutes))
       : task.scheduledEnd;
+  final next = nextScheduledTask(w, task, now);
   return {
+    'nextTitle': next?.title,
+    'nextAt': next?.scheduledAt?.millisecondsSinceEpoch == null
+        ? null
+        : next!.scheduledAt!.millisecondsSinceEpoch / 1000,
+    'category': task.resolvedCategory.label,
     'id': task.id,
     'title': task.title,
     'minutes': task.minutes,

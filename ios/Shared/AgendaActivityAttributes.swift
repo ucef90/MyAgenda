@@ -10,6 +10,9 @@ struct AgendaActivityAttributes: ActivityAttributes {
         var end: Date
         var elapsedSeconds: Int
         var progress: Double
+        var nextTitle: String?
+        var nextAt: Date?
+        var category: String?
     }
     var taskId: String
     var sessionKey: String

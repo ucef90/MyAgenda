@@ -8,7 +8,7 @@ Application **Flutter / Dart**, en français, pour organiser tâches personnelle
 
 <img src="docs/screenshots/today.png" width="240" alt="Accueil Aujourd’hui" /> <img src="docs/screenshots/tasks.png" width="240" alt="Mes tâches" /> <img src="docs/screenshots/assistant.png" width="240" alt="Assistant personnel" />
 
-## Version livrée : 0.3.0 — locale
+## Version livrée : 0.4.0 — locale
 
 Le projet suit les trois documents de conception : **valider la V1 visuelle avant de connecter FastAPI**. Il démarre avec un jeu de données de découverte daté du jour du premier lancement. Les modifications sont conservées sur l'appareil. Dans Paramètres, « Effacer les données de découverte » permet de repartir à vide (cela efface aussi vos ajouts : exporter avant).
 
@@ -26,7 +26,20 @@ Le projet suit les trois documents de conception : **valider la V1 visuelle avan
 | Paramètres | Prénom, jours et horaires, pause, thème sombre, copie d'une sauvegarde JSON |
 | Plateformes | Projets iOS, Android, macOS et Web inclus |
 
-**Non inclus à ce stade** : compte/authentification, serveur, synchronisation, notifications sur Mac/Android/Web et push distant, pièces jointes autres que les images, liens publics avec expiration, calendrier externe, fractionnement automatique, redimensionnement des blocs agenda, récurrence, facturation. L'aperçu client est explicitement local ; aucun faux lien n'est généré. Le texte copié ne se met pas à jour automatiquement.
+**Non inclus à ce stade** : compte/authentification, serveur, synchronisation, notifications sur Mac/Android/Web et push distant, pièces jointes autres que les images et l’audio, liens publics avec expiration, Gmail connecté, fractionnement automatique, redimensionnement des blocs agenda, récurrence, facturation. L'aperçu client est explicitement local ; aucun faux lien n'est généré. Le texte copié ne se met pas à jour automatiquement.
+
+## Nouveautés 0.4.0 — tâches, voix et préparation
+
+- **Cartes entièrement colorées** : catégorie explicite (professionnel, formation, sport, musique, personnel, repos), couleur automatique ou personnalisée. Les anciens titres donnent une catégorie indicative modifiable. Gyrophare doux pour les retards, chronomètre en cours et personnage endormi pour les tâches à venir ; les animations respectent « Réduire les animations ».
+- **Avancement du jour** : pourcentage de tâches du jour terminées. Rouge si une tâche du jour est en retard, vert si les fins de créneau prévues sont respectées, bleu si des tâches sont terminées en avance. Le temps écoulé ne vaut pas confirmation de réalisation.
+- **Validation visible** : bouton fixé sous le formulaire, au-dessus du clavier, avec attente de la sauvegarde locale.
+- **Audio iPhone** : dictée en français (enregistrement puis reconnaissance vocale Apple, à relire avant validation), jusqu’à huit notes audio de trois minutes par tâche, lecture et retrait. Autorisations micro et reconnaissance vocale demandées à l’utilisation. Apple peut traiter la dictée sur ses serveurs ; une note audio conservée seule reste dans le stockage de l’app. Les fichiers M4A et leurs métadonnées sont inclus dans la sauvegarde JSON.
+- **Calendrier iPhone** : Agenda → Importer mon agenda. Sélection des calendriers puis aperçu des 90 prochains jours, import sans doublons, reprise des rendez-vous existants en conservant notes, checklist et préparation. Compatible avec les comptes Google déjà ajoutés au Calendrier d’iOS. Les journées entières sont décochées par défaut ; les événements de plus de 24 heures doivent être répartis en tâches journalières. Aucune écriture dans le calendrier source. Les imports peuvent chevaucher des tâches existantes : le planning en tient compte comme engagements fixes.
+- À la réouverture, les événements déjà importés sont actualisés ; les nouveaux nécessitent une nouvelle sélection. Les événements supprimés du calendrier ne sont pas supprimés automatiquement de MyAgenda. Un identifiant modifié par le fournisseur peut exiger un rapprochement manuel.
+- **Formation** : support préparé, bon de commande signé, mail envoyé — trois états « À vérifier », « À faire », « Oui, confirmé ». Confirmation manuelle, sans inférence à partir d’une absence de preuve. Rappel de préparation 24 h avant, si les rappels sont activés et cette heure est encore à venir.
+- **Écran verrouillé** : progression native du temps, prochain rendez-vous, liens « Terminé » et « Pas fini » ouvrant l’application pour enregistrer le statut. Notification de fin de créneau avec actions, en plus des rappels de début. L’activité doit toujours être démarrée depuis l’app ; aucune bascule automatique à une nouvelle activité lorsque l’app est fermée.
+
+**Connexion Gmail / ChatGPT Work non livrée** : la version n’utilise aucun accès mail et ne se présente pas comme connectée. Il faut une application Google OAuth pour iOS (projet, écran de consentement et client correspondant au bundle), des autorisations de lecture Gmail et un stockage sécurisé des jetons avant de construire cette analyse. Les accès des connecteurs ChatGPT ne sont ni extraits ni réutilisés par l’app. Aucun secret n’est inclus dans le dépôt. La page Agenda & connexions explique cet état.
 
 ## Nouveautés 0.3.0 — rappels iPhone
 
@@ -117,7 +130,7 @@ lib/
 
 `go_router` gère les routes. Riverpod centralise l'état. `SharedPreferences` conserve un document JSON versionné : adapté à cette V1 locale, **sans chiffrement applicatif**. Utiliser le verrouillage de l'appareil et éviter les données sensibles pendant la validation. Le stockage du navigateur peut être supprimé par le navigateur ; copier régulièrement une sauvegarde. L'import de sauvegarde n'est pas encore exposé dans l'interface.
 
-Le statut « En retard » est dérivé de l'échéance et de l'heure courante. Le pourcentage vient de la checklist, pas d'une valeur saisie : 3/7 = 43 %. Une tâche terminée conserve sa réservation pour l'historique et ne devient jamais en retard. Une tâche annulée libère son créneau.
+Le statut « En retard » est dérivé de l’échéance ou de la fin du créneau planifié et de l’heure courante. Le pourcentage vient de la checklist, pas d'une valeur saisie : 3/7 = 43 %. Une tâche terminée conserve sa réservation pour l'historique et ne devient jamais en retard. Une tâche annulée libère son créneau.
 
 Le moteur utilise l'heure locale de l'appareil, des intervalles semi-ouverts et une pause quotidienne. Les suggestions sont arrondies au prochain pas de cinq minutes, sur 30 jours maximum. La proposition de journée traite les priorités avant les échéances. Un conflit ou une proposition devenue périmée bloque l'application du planning. L'écran d'organisation vise demain après 18h ; un jour non travaillé peut donc n'offrir aucun créneau.
 

@@ -1,4 +1,6 @@
 import 'dart:async';
+import '../../services/device_assistant.dart';
+import '../audio/audio_editor.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/format.dart';
@@ -34,6 +36,9 @@ class _TaskFormState extends ConsumerState<TaskForm> {
   DateTime? _earliest, _deadline, _scheduled;
   String? _client, _mission;
   late TaskColor _color;
+  late TaskCategory _category;
+  late List<AudioNote> _audioNotes;
+  final Set<String> _addedAudio = {};
   late bool _personalTime;
   late List<TaskAttachment> _attachments;
   late AttachmentRepository _images;
@@ -43,6 +48,8 @@ class _TaskFormState extends ConsumerState<TaskForm> {
   void initState() {
     super.initState();
     final t = widget.task;
+    _category = t?.category ?? TaskCategory.automatic;
+    _audioNotes = [...?t?.audioNotes];
     _color = t?.color ?? TaskColor.automatic;
     _personalTime = t?.personalTime ?? false;
     _attachments = [...?t?.attachments];
@@ -71,6 +78,11 @@ class _TaskFormState extends ConsumerState<TaskForm> {
         unawaited(_images.remove(id).catchError((Object _) {}));
       }
     }
+    for (final id in _addedAudio) {
+      if (!_saved || !_audioNotes.any((n) => n.id == id)) {
+        unawaited(DeviceAssistant.removeAudio(id).catchError((_) {}));
+      }
+    }
     super.dispose();
   }
 
@@ -94,10 +106,12 @@ class _TaskFormState extends ConsumerState<TaskForm> {
         : DateTime(date.year, date.month, date.day, time.hour, time.minute);
   }
 
-  void save() {
+  Future<void> save() async {
     if (!_form.currentState!.validate()) return;
     final task = (widget.task ?? Task(id: newId(), title: '')).copyWith(
       title: _title.text.trim(),
+      category: _category,
+      audioNotes: _audioNotes,
       color: _color,
       personalTime: _personalTime,
       attachments: _attachments,
@@ -128,6 +142,16 @@ class _TaskFormState extends ConsumerState<TaskForm> {
           ? 'Tâche ajoutée'
           : 'Modifications enregistrées',
     )) {
+      _saved = true;
+      setState(() => _busy = true);
+      final store = ref.read(workspaceProvider.notifier);
+      await store.flush();
+      if (!mounted) return;
+      if (store.persistenceError != null) {
+        setState(() => _busy = false);
+        toast(context, store.persistenceError!);
+        return;
+      }
       _saved = true;
       Navigator.pop(context);
     }
@@ -161,215 +185,328 @@ class _TaskFormState extends ConsumerState<TaskForm> {
     final w = ref.watch(workspaceProvider);
     return Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.sizeOf(context).height * .88,
-          maxWidth: 640,
-        ),
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(24, 0, 24, 28),
-          child: Form(
-            key: _form,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  widget.task == null ? 'Nouvelle tâche' : 'Modifier la tâche',
-                  style: Theme.of(context).textTheme.headlineMedium,
-                ),
-                const SizedBox(height: 8),
-                const Text('Une idée en tête ? Faites-lui une place.'),
-                const SizedBox(height: 24),
-                TextFormField(
-                  controller: _title,
-                  autofocus: widget.task == null,
-                  textCapitalization: TextCapitalization.sentences,
-                  decoration: const InputDecoration(
-                    labelText: 'Que devez-vous faire ?',
-                  ),
-                  validator: (v) => v == null || v.trim().isEmpty
-                      ? 'Ajoutez un titre.'
-                      : null,
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _duration,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          labelText: 'Durée (min)',
-                          prefixIcon: Icon(Icons.schedule),
-                        ),
-                        validator: (v) {
-                          final n = int.tryParse(v ?? '');
-                          return n == null || n < 5 || n > 1440
-                              ? 'De 5 à 1 440 min'
-                              : null;
-                        },
+      child: SizedBox(
+        height:
+            (MediaQuery.sizeOf(context).height -
+                MediaQuery.viewInsetsOf(context).bottom -
+                MediaQuery.paddingOf(context).top) *
+            .9,
+        width: 640,
+        child: Column(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(24, 0, 24, 28),
+                child: Form(
+                  key: _form,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        widget.task == null
+                            ? 'Nouvelle tâche'
+                            : 'Modifier la tâche',
+                        style: Theme.of(context).textTheme.headlineMedium,
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: DropdownButtonFormField<Priority>(
-                        initialValue: _priority,
+                      const SizedBox(height: 8),
+                      const Text('Une idée en tête ? Faites-lui une place.'),
+                      const SizedBox(height: 24),
+                      TextFormField(
+                        controller: _title,
+                        autofocus: false,
+                        textCapitalization: TextCapitalization.sentences,
+                        decoration: const InputDecoration(
+                          labelText: 'Que devez-vous faire ?',
+                        ),
+                        validator: (v) => v == null || v.trim().isEmpty
+                            ? 'Ajoutez un titre.'
+                            : null,
+                      ),
+                      if (DeviceAssistant.supported)
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: TextButton.icon(
+                            onPressed: _busy
+                                ? null
+                                : () async {
+                                    setState(() => _busy = true);
+                                    try {
+                                      final text = await dictateTask(context);
+                                      if (mounted &&
+                                          text != null &&
+                                          text.trim().isNotEmpty) {
+                                        _title.text = text.trim();
+                                      }
+                                    } catch (e) {
+                                      if (context.mounted) {
+                                        toast(context, deviceError(e));
+                                      }
+                                    } finally {
+                                      if (mounted) {
+                                        setState(() => _busy = false);
+                                      }
+                                    }
+                                  },
+                            icon: const Icon(Icons.mic),
+                            label: const Text('Dicter ma tâche'),
+                          ),
+                        ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextFormField(
+                              controller: _duration,
+                              keyboardType: TextInputType.number,
+                              decoration: const InputDecoration(
+                                labelText: 'Durée (min)',
+                                prefixIcon: Icon(Icons.schedule),
+                              ),
+                              validator: (v) {
+                                final n = int.tryParse(v ?? '');
+                                return n == null || n < 5 || n > 1440
+                                    ? 'De 5 à 1 440 min'
+                                    : null;
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: DropdownButtonFormField<Priority>(
+                              initialValue: _priority,
+                              isExpanded: true,
+                              decoration: const InputDecoration(
+                                labelText: 'Priorité',
+                              ),
+                              items: [
+                                for (final p in Priority.values)
+                                  DropdownMenuItem(
+                                    value: p,
+                                    child: Text(p.label),
+                                  ),
+                              ],
+                              onChanged: (p) => setState(() => _priority = p!),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      DropdownButtonFormField<TaskCategory>(
+                        initialValue: _category,
                         isExpanded: true,
                         decoration: const InputDecoration(
-                          labelText: 'Priorité',
+                          labelText: 'Type d’activité',
                         ),
                         items: [
-                          for (final p in Priority.values)
-                            DropdownMenuItem(value: p, child: Text(p.label)),
-                        ],
-                        onChanged: (p) => setState(() => _priority = p!),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                const Text(
-                  'Couleur de la tâche',
-                  style: TextStyle(fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 8),
-                TaskColorPicker(
-                  selected: _color,
-                  onChanged: (v) => setState(() => _color = v),
-                ),
-                const SizedBox(height: 16),
-                AttachmentEditor(
-                  value: _attachments,
-                  onBusyChanged: (v) => setState(() => _busy = v),
-                  onChanged: (value) => setState(() {
-                    _addedIds.addAll(
-                      value
-                          .where(
-                            (a) => !(widget.task?.attachments ?? []).any(
-                              (old) => old.id == a.id,
+                          for (final c in TaskCategory.values)
+                            DropdownMenuItem(
+                              value: c,
+                              child: Text('${c.emoji} ${c.label}'),
                             ),
-                          )
-                          .map((a) => a.id),
-                    );
-                    _attachments = value;
-                  }),
-                ),
-                dateRow('Échéance', _deadline, (d) => _deadline = d),
-                if (_scheduled != null || _expanded)
-                  dateRow(
-                    'Créneau planifié',
-                    _scheduled,
-                    (d) => _scheduled = d,
-                  ),
-                if (!_expanded)
-                  TextButton.icon(
-                    onPressed: () => setState(() => _expanded = true),
-                    icon: const Icon(Icons.tune_rounded),
-                    label: const Text('Plus d’options'),
-                  ),
-                if (_expanded) ...[
-                  const Divider(),
-                  SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text('Sur mon temps personnel'),
-                    subtitle: const Text(
-                      'Utiliser mes horaires personnels, y compris le week-end.',
-                    ),
-                    value: _personalTime,
-                    onChanged: (v) => setState(() => _personalTime = v),
-                  ),
-                  SegmentedButton<bool>(
-                    segments: const [
-                      ButtonSegment(
-                        value: false,
-                        label: Text('Personnel'),
-                        icon: Icon(Icons.person_outline),
+                        ],
+                        onChanged: (c) => setState(() {
+                          _category = c!;
+                          _color = TaskColor.automatic;
+                          if (c != TaskCategory.automatic) {
+                            _professional =
+                                c == TaskCategory.work ||
+                                c == TaskCategory.training;
+                            _personalTime = !_professional;
+                          }
+                        }),
                       ),
-                      ButtonSegment(
-                        value: true,
-                        label: Text('Pro'),
-                        icon: Icon(Icons.work_outline),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Couleur de la tâche',
+                        style: TextStyle(fontWeight: FontWeight.w600),
                       ),
+                      const SizedBox(height: 8),
+                      TaskColorPicker(
+                        selected: _color,
+                        onChanged: (v) => setState(() => _color = v),
+                      ),
+                      const SizedBox(height: 16),
+                      AttachmentEditor(
+                        value: _attachments,
+                        onBusyChanged: (v) => setState(() => _busy = v),
+                        onChanged: (value) => setState(() {
+                          _addedIds.addAll(
+                            value
+                                .where(
+                                  (a) => !(widget.task?.attachments ?? []).any(
+                                    (old) => old.id == a.id,
+                                  ),
+                                )
+                                .map((a) => a.id),
+                          );
+                          _attachments = value;
+                        }),
+                      ),
+                      const SizedBox(height: 12),
+                      AudioNotesEditor(
+                        value: _audioNotes,
+                        onBusy: (v) => setState(() => _busy = v),
+                        onChanged: (notes) => setState(() {
+                          _addedAudio.addAll(
+                            notes
+                                .where(
+                                  (n) => !(widget.task?.audioNotes ?? []).any(
+                                    (old) => old.id == n.id,
+                                  ),
+                                )
+                                .map((n) => n.id),
+                          );
+                          _audioNotes = notes;
+                        }),
+                      ),
+                      dateRow('Échéance', _deadline, (d) => _deadline = d),
+                      if (_scheduled != null || _expanded)
+                        dateRow(
+                          'Créneau planifié',
+                          _scheduled,
+                          (d) => _scheduled = d,
+                        ),
+                      if (!_expanded)
+                        TextButton.icon(
+                          onPressed: () => setState(() => _expanded = true),
+                          icon: const Icon(Icons.tune_rounded),
+                          label: const Text('Plus d’options'),
+                        ),
+                      if (_expanded) ...[
+                        const Divider(),
+                        SwitchListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: const Text('Sur mon temps personnel'),
+                          subtitle: const Text(
+                            'Utiliser mes horaires personnels, y compris le week-end.',
+                          ),
+                          value: _personalTime,
+                          onChanged: (v) => setState(() => _personalTime = v),
+                        ),
+                        SegmentedButton<bool>(
+                          segments: const [
+                            ButtonSegment(
+                              value: false,
+                              label: Text('Personnel'),
+                              icon: Icon(Icons.person_outline),
+                            ),
+                            ButtonSegment(
+                              value: true,
+                              label: Text('Pro'),
+                              icon: Icon(Icons.work_outline),
+                            ),
+                          ],
+                          selected: {_professional},
+                          onSelectionChanged: (s) =>
+                              setState(() => _professional = s.first),
+                        ),
+                        const SizedBox(height: 16),
+                        if (_professional) ...[
+                          DropdownButtonFormField<String>(
+                            initialValue: _client,
+                            decoration: const InputDecoration(
+                              labelText: 'Client',
+                            ),
+                            items: [
+                              const DropdownMenuItem<String>(
+                                value: null,
+                                child: Text('Sans client'),
+                              ),
+                              for (final c in w.clients)
+                                DropdownMenuItem(
+                                  value: c.id,
+                                  child: Text(c.name),
+                                ),
+                            ],
+                            onChanged: (v) => setState(() {
+                              _client = v;
+                              _mission = null;
+                            }),
+                          ),
+                          const SizedBox(height: 16),
+                          DropdownButtonFormField<String>(
+                            key: ValueKey(_client),
+                            initialValue: _mission,
+                            decoration: const InputDecoration(
+                              labelText: 'Mission',
+                            ),
+                            items: [
+                              const DropdownMenuItem<String>(
+                                value: null,
+                                child: Text('Sans mission'),
+                              ),
+                              for (final m in w.missions.where(
+                                (m) => m.clientId == _client,
+                              ))
+                                DropdownMenuItem(
+                                  value: m.id,
+                                  child: Text(m.title),
+                                ),
+                            ],
+                            onChanged: (v) => setState(() => _mission = v),
+                          ),
+                          const SizedBox(height: 16),
+                        ],
+                        TextFormField(
+                          controller: _project,
+                          decoration: const InputDecoration(
+                            labelText: 'Projet (facultatif)',
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        TextFormField(
+                          controller: _notes,
+                          maxLines: 3,
+                          decoration: const InputDecoration(
+                            labelText: 'Notes privées',
+                          ),
+                        ),
+                        dateRow(
+                          'Disponible à partir du',
+                          _earliest,
+                          (d) => _earliest = d,
+                        ),
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 12),
+                          child: Text(
+                            'Les sous-tâches s’ajoutent dans le détail de la tâche.',
+                          ),
+                        ),
+                      ],
                     ],
-                    selected: {_professional},
-                    onSelectionChanged: (s) =>
-                        setState(() => _professional = s.first),
-                  ),
-                  const SizedBox(height: 16),
-                  if (_professional) ...[
-                    DropdownButtonFormField<String>(
-                      initialValue: _client,
-                      decoration: const InputDecoration(labelText: 'Client'),
-                      items: [
-                        const DropdownMenuItem<String>(
-                          value: null,
-                          child: Text('Sans client'),
-                        ),
-                        for (final c in w.clients)
-                          DropdownMenuItem(value: c.id, child: Text(c.name)),
-                      ],
-                      onChanged: (v) => setState(() {
-                        _client = v;
-                        _mission = null;
-                      }),
-                    ),
-                    const SizedBox(height: 16),
-                    DropdownButtonFormField<String>(
-                      key: ValueKey(_client),
-                      initialValue: _mission,
-                      decoration: const InputDecoration(labelText: 'Mission'),
-                      items: [
-                        const DropdownMenuItem<String>(
-                          value: null,
-                          child: Text('Sans mission'),
-                        ),
-                        for (final m in w.missions.where(
-                          (m) => m.clientId == _client,
-                        ))
-                          DropdownMenuItem(value: m.id, child: Text(m.title)),
-                      ],
-                      onChanged: (v) => setState(() => _mission = v),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-                  TextFormField(
-                    controller: _project,
-                    decoration: const InputDecoration(
-                      labelText: 'Projet (facultatif)',
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _notes,
-                    maxLines: 3,
-                    decoration: const InputDecoration(
-                      labelText: 'Notes privées',
-                    ),
-                  ),
-                  dateRow(
-                    'Disponible à partir du',
-                    _earliest,
-                    (d) => _earliest = d,
-                  ),
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 12),
-                    child: Text(
-                      'Les sous-tâches s’ajoutent dans le détail de la tâche.',
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 16),
-                FilledButton.icon(
-                  onPressed: _busy ? null : save,
-                  icon: const Icon(Icons.add_rounded),
-                  label: Text(
-                    widget.task == null ? 'Ajouter la tâche' : 'Enregistrer',
                   ),
                 ),
-              ],
+              ),
             ),
-          ),
+            Container(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface,
+                border: Border(
+                  top: BorderSide(color: Theme.of(context).dividerColor),
+                ),
+              ),
+              child: SafeArea(
+                top: false,
+                child: SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    key: const Key('save-task'),
+                    onPressed: _busy ? null : save,
+                    icon: const Icon(Icons.check_rounded),
+                    label: Text(
+                      _busy
+                          ? 'Enregistrement…'
+                          : widget.task == null
+                          ? 'Ajouter la tâche'
+                          : 'Enregistrer les modifications',
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

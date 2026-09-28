@@ -5,6 +5,7 @@ import UserNotifications
 @main
 @objc class AppDelegate: FlutterAppDelegate {
   private var agendaAlerts: AgendaAlerts?
+  private var deviceAssistant: DeviceAssistant?
 
   override func application(
     _ application: UIApplication,
@@ -13,6 +14,7 @@ import UserNotifications
     GeneratedPluginRegistrant.register(with: self)
     if let registrar = registrar(forPlugin: "MyAgendaAlerts") {
       agendaAlerts = AgendaAlerts(messenger: registrar.messenger())
+      deviceAssistant = DeviceAssistant(messenger: registrar.messenger())
     }
     UNUserNotificationCenter.current().delegate = self
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
@@ -30,7 +32,13 @@ import UserNotifications
   override func userNotificationCenter(_ center: UNUserNotificationCenter,
       didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
     if response.notification.request.identifier.hasPrefix("myagenda.") {
-      if let id = response.notification.request.content.userInfo["taskId"] as? String { agendaAlerts?.openTask(id) }
+      if let id = response.notification.request.content.userInfo["taskId"] as? String {
+        if ["done", "later", "start"].contains(response.actionIdentifier) {
+          var url = URLComponents(); url.scheme = "myagenda"; url.host = "task"
+          url.queryItems = [URLQueryItem(name: "id", value: id), URLQueryItem(name: "action", value: response.actionIdentifier)]
+          agendaAlerts?.openTask(url.string ?? id)
+        } else { agendaAlerts?.openTask(id) }
+      }
       completionHandler()
     } else { super.userNotificationCenter(center, didReceive: response, withCompletionHandler: completionHandler) }
   }
@@ -38,8 +46,8 @@ import UserNotifications
   override func application(_ app: UIApplication, open url: URL,
       options: [UIApplication.OpenURLOptionsKey: Any] = [:]) -> Bool {
     if url.scheme == "myagenda", url.host == "task",
-       let id = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.first(where: { $0.name == "id" })?.value {
-      agendaAlerts?.openTask(id)
+       URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.first(where: { $0.name == "id" })?.value != nil {
+      agendaAlerts?.openTask(url.absoluteString)
       return true
     }
     return super.application(app, open: url, options: options)

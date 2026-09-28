@@ -85,6 +85,14 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             trailing: const Icon(Icons.chevron_right),
             onTap: () => context.push('/alerts'),
           ),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.calendar_month),
+            title: const Text('Agenda & connexions'),
+            subtitle: const Text('Importer vos rendez-vous et formations'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push('/connections'),
+          ),
           const SectionTitle('Profil'),
           TextField(
             controller: _name,
@@ -170,14 +178,14 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 if (context.mounted) {
                   toast(
                     context,
-                    'Sauvegarde avec images copiée. Conservez-la dans un fichier sûr.',
+                    'Sauvegarde avec images et audio copiée. Conservez-la dans un fichier sûr.',
                   );
                 }
               } catch (_) {
                 if (context.mounted) {
                   toast(
                     context,
-                    'La sauvegarde complète n’a pas pu être copiée. Vérifiez que les images sont accessibles.',
+                    'La sauvegarde complète n’a pas pu être copiée. Vérifiez que les images et les notes audio sont accessibles.',
                   );
                 }
               }
@@ -214,7 +222,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           const SizedBox(height: 28),
           const Center(
             child: Text(
-              '$appName · 0.3.0\n$appTagline',
+              '$appName · 0.4.0\n$appTagline',
               textAlign: TextAlign.center,
               style: TextStyle(color: AppColors.muted, fontSize: 13),
             ),

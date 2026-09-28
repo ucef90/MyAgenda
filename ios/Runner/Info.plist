@@ -2,16 +2,25 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>NSSupportsLiveActivities</key><true/>
-    <key>FlutterDeepLinkingEnabled</key><false/>
-    <key>CFBundleURLTypes</key><array><dict>
-        <key>CFBundleURLName</key><string>fr.beyondexpertise.myAgenda</string>
-        <key>CFBundleURLSchemes</key><array><string>myagenda</string></array>
-    </dict></array>
-    <key>NSCameraUsageDescription</key>
-    <string>Prendre une photo pour illustrer une tâche dans MyAgenda.</string>
-    <key>NSPhotoLibraryUsageDescription</key>
-    <string>Joindre les photos et designs que vous choisissez à vos tâches.</string>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
+	<key>FlutterDeepLinkingEnabled</key>
+	<false/>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>fr.beyondexpertise.myAgenda</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>myagenda</string>
+			</array>
+		</dict>
+	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>Prendre une photo pour illustrer une tâche dans MyAgenda.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Joindre les photos et designs que vous choisissez à vos tâches.</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
@@ -55,5 +64,13 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Enregistrer une note audio ou dicter une tâche dans MyAgenda.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Transcrire votre dictée en français pour créer une tâche. Apple peut traiter la voix sur ses serveurs.</string>
+	<key>NSCalendarsUsageDescription</key>
+	<string>Lire les rendez-vous sélectionnés pour les importer dans MyAgenda.</string>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>Lire vos calendriers pour importer les rendez-vous et préparer les formations. MyAgenda ne modifie aucun événement.</string>
 </dict>
 </plist>

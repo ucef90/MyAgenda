@@ -14,9 +14,22 @@ extension TaskColorStyle on TaskColor {
 
 extension TaskStyle on Task {
   TaskColor get resolvedColor => color == TaskColor.automatic
-      ? (professional ? TaskColor.indigo : TaskColor.violet)
+      ? switch (resolvedCategory) {
+          TaskCategory.work => TaskColor.blue,
+          TaskCategory.training => TaskColor.indigo,
+          TaskCategory.sport => TaskColor.teal,
+          TaskCategory.music => TaskColor.violet,
+          TaskCategory.rest => TaskColor.amber,
+          _ => TaskColor.rose,
+        }
       : color;
   Color get displayColor => resolvedColor.value;
+  Color blockColor(BuildContext context) => Color.alphaBlend(
+    displayColor.withValues(
+      alpha: Theme.of(context).brightness == Brightness.dark ? .30 : .14,
+    ),
+    Theme.of(context).colorScheme.surface,
+  );
 }
 
 class TaskColorPicker extends StatelessWidget {

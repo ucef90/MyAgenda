@@ -5,6 +5,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/task.dart';
 import '../models/workspace.dart';
 import '../services/planner.dart';
+import '../services/calendar_import.dart';
+import '../services/device_assistant.dart';
 import '../services/assistant.dart';
 import '../core/format.dart';
 import 'demo_data.dart';
@@ -67,6 +69,12 @@ class WorkspaceStore extends StateNotifier<Workspace> {
   Future<void> flush() => _writes;
   void _change(Workspace next) {
     if (persistenceError != null) throw StateError(persistenceError!);
+    final removedAudio = state.tasks
+        .expand((t) => t.audioNotes)
+        .where(
+          (a) => !next.tasks.any((t) => t.audioNotes.any((b) => b.id == a.id)),
+        )
+        .toList();
     final removed = state.tasks
         .expand((t) => t.attachments)
         .where(
@@ -78,6 +86,17 @@ class WorkspaceStore extends StateNotifier<Workspace> {
     unawaited(
       flush().then((_) async {
         if (!mounted || persistenceError != null) return;
+        for (final audio in removedAudio) {
+          if (!state.tasks.any(
+            (t) => t.audioNotes.any((a) => a.id == audio.id),
+          )) {
+            try {
+              await DeviceAssistant.removeAudio(audio.id);
+            } catch (_) {
+              /* Retain orphan on I/O failure. */
+            }
+          }
+        }
         for (final image in removed) {
           if (!state.tasks.any(
             (t) => t.attachments.any((a) => a.id == image.id),
@@ -129,6 +148,9 @@ class WorkspaceStore extends StateNotifier<Workspace> {
       ),
     );
   }
+
+  void importCalendar(List<CalendarEvent> events) =>
+      _change(state.copyWith(tasks: mergeCalendarEvents(state.tasks, events)));
 
   void delete(String id) => _change(
     state.copyWith(tasks: state.tasks.where((t) => t.id != id).toList()),
@@ -316,7 +338,17 @@ class WorkspaceStore extends StateNotifier<Workspace> {
       }
       files[image.id] = base64Encode(data);
     }
-    return jsonEncode({...snapshot.toJson(), 'imageFiles': files});
+    final audio = <String, String>{};
+    for (final note in snapshot.tasks.expand((t) => t.audioNotes)) {
+      final data = await DeviceAssistant.call<String>('audioRead', note.id);
+      if (data == null) throw StateError('Note audio manquante : ${note.name}');
+      audio[note.id] = data;
+    }
+    return jsonEncode({
+      ...snapshot.toJson(),
+      'imageFiles': files,
+      'audioFiles': audio,
+    });
   }
 
   String export() => _corruptOnLoad

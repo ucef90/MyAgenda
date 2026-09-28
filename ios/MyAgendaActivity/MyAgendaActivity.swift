@@ -20,14 +20,33 @@ struct MyAgendaActivity: Widget {
                 }
                 Text(context.state.title).font(.headline).lineLimit(2)
                 HStack {
-                    Label(context.isStale ? "Ouvrez MyAgenda" : "Votre prochain pas", systemImage: "arrow.up.right")
-                        .font(.caption).foregroundStyle(.secondary)
+                    Text(context.state.category ?? "Votre tâche").font(.caption).foregroundStyle(.secondary)
                     Spacer()
                     timer(context).font(.title3.monospacedDigit().weight(.semibold))
                 }
-                if context.state.progress > 0 {
-                    ProgressView(value: context.state.progress).tint(accent)
+                if context.state.mode != "paused" {
+                    ProgressView(timerInterval: context.state.start...max(context.state.end, context.state.start.addingTimeInterval(1)), countsDown: false) {
+                        Text(context.isStale ? "Temps prévu écoulé" : "Temps du créneau").font(.caption2)
+                    } currentValueLabel: { EmptyView() }.tint(accent)
                 }
+                HStack(spacing: 16) {
+                    Link(destination: taskURL(context.attributes.taskId, action: "done")!) {
+                        Label("Terminé", systemImage: "checkmark.circle.fill").font(.caption.bold()).foregroundStyle(.green)
+                    }
+                    Link(destination: taskURL(context.attributes.taskId, action: "later")!) {
+                        Label("Pas fini", systemImage: "pause.circle").font(.caption.bold())
+                    }
+                    Spacer()
+                }
+                if let next = context.state.nextTitle {
+                    HStack(alignment: .top) {
+                        Text("ENSUITE").font(.caption2.bold()).foregroundStyle(accent)
+                        Text(next).font(.caption).lineLimit(1)
+                        Spacer()
+                        if let at = context.state.nextAt { Text(at, style: .time).font(.caption.monospacedDigit()) }
+                    }
+                }
+
             }
             .padding(16)
             .activityBackgroundTint(Color(red: 0.09, green: 0.11, blue: 0.19))
@@ -77,10 +96,11 @@ struct MyAgendaActivity: Widget {
             Text(timerInterval: context.state.start...max(context.state.end, context.state.start.addingTimeInterval(1)), countsDown: context.state.mode != "running")
         }
     }
-    private func taskURL(_ id: String) -> URL? {
+    private func taskURL(_ id: String, action: String? = nil) -> URL? {
         var url = URLComponents()
         url.scheme = "myagenda"; url.host = "task"
         url.queryItems = [URLQueryItem(name: "id", value: id)]
+        if let action = action { url.queryItems?.append(URLQueryItem(name: "action", value: action)) }
         return url.url
     }
 }

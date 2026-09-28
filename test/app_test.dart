@@ -20,6 +20,9 @@ void main() {
     Size size = const Size(390, 844),
     double scale = 1,
   }) async {
+    tester.platformDispatcher.accessibilityFeaturesTestValue =
+        FakeAccessibilityFeatures(disableAnimations: true);
+    addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
     await initializeDateFormatting('fr');
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
@@ -143,8 +146,8 @@ void main() {
         find.widgetWithText(TextFormField, 'Que devez-vous faire ?'),
         'Formation reportée',
       );
-      await tester.ensureVisible(find.text('Enregistrer'));
-      await tester.tap(find.text('Enregistrer'));
+      await tester.ensureVisible(find.text('Enregistrer les modifications'));
+      await tester.tap(find.text('Enregistrer les modifications'));
       await tester.pumpAndSettle();
       expect(store.state.tasks.last.title, 'Formation reportée');
       expect(store.state.tasks.last.status, TaskStatus.cancelled);

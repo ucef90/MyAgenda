@@ -12,6 +12,13 @@ final class AgendaAlerts {
 
     init(messenger: FlutterBinaryMessenger) {
         channel = FlutterMethodChannel(name: "fr.beyondexpertise.myagenda/alerts", binaryMessenger: messenger)
+        let done = UNNotificationAction(identifier: "done", title: "Terminé ✓", options: [.foreground])
+        let later = UNNotificationAction(identifier: "later", title: "Pas fini", options: [.foreground])
+        let start = UNNotificationAction(identifier: "start", title: "Démarrer", options: [.foreground])
+        center.setNotificationCategories([
+            UNNotificationCategory(identifier: "myagenda.end", actions: [done, later], intentIdentifiers: []),
+            UNNotificationCategory(identifier: "myagenda.start", actions: [start, done], intentIdentifiers: [])
+        ])
         channel.setMethodCallHandler { [weak self] call, result in
             self?.handle(call, result: result)
         }
@@ -112,6 +119,8 @@ final class AgendaAlerts {
                         let content = UNMutableNotificationContent()
                         content.title = title; content.body = body; content.sound = .default
                         content.threadIdentifier = "myagenda.tasks"
+                        let kind = event["kind"] as? String ?? "start"
+                        content.categoryIdentifier = kind == "end" ? "myagenda.end" : kind == "start" ? "myagenda.start" : ""
                         content.userInfo = ["taskId": taskId, "at": at]
                         var calendar = Calendar(identifier: .gregorian)
                         calendar.timeZone = .current
@@ -149,7 +158,10 @@ final class AgendaAlerts {
         let session = "\(id):\(startSeconds)"
         let state = AgendaActivityAttributes.ContentState(title: title, mode: mode, start: start, end: end,
             elapsedSeconds: (payload["elapsedSeconds"] as? NSNumber)?.intValue ?? 0,
-            progress: min(1, max(0, (payload["progress"] as? NSNumber)?.doubleValue ?? 0)))
+            progress: min(1, max(0, (payload["progress"] as? NSNumber)?.doubleValue ?? 0)),
+            nextTitle: payload["nextTitle"] as? String,
+            nextAt: (payload["nextAt"] as? NSNumber).map { Date(timeIntervalSince1970: $0.doubleValue) },
+            category: payload["category"] as? String)
         let content = ActivityContent(state: state, staleDate: mode == "paused" ? nil : end)
         var current: Activity<AgendaActivityAttributes>?
         for activity in Activity<AgendaActivityAttributes>.activities {
