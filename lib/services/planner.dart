@@ -68,7 +68,7 @@ class Planner {
     if (task.deadline != null && end.isAfter(task.deadline!)) return false;
     return freeSlots(
       start,
-      w.preferences,
+      task.personalTime ? w.preferences.personalWindow : w.preferences,
       w.tasks,
       excludeId: task.id,
     ).any((s) => !start.isBefore(s.start) && !end.isAfter(s.end));
@@ -85,7 +85,7 @@ class Planner {
       final day = DateTime(now.year, now.month, now.day + i);
       for (final slot in freeSlots(
         day,
-        w.preferences,
+        task.personalTime ? w.preferences.personalWindow : w.preferences,
         w.tasks,
         notBefore: now,
         excludeId: task.id,

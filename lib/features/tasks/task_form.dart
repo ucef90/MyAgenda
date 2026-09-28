@@ -1,7 +1,12 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/format.dart';
 import '../../models/task.dart';
+import '../../models/attachment.dart';
+import '../../repositories/attachment_repository.dart';
+import '../../theme/task_colors.dart';
+import '../attachments/attachment_editor.dart';
 import '../../repositories/workspace_store.dart';
 import '../../widgets/common.dart';
 
@@ -28,10 +33,20 @@ class _TaskFormState extends ConsumerState<TaskForm> {
   late Priority _priority;
   DateTime? _earliest, _deadline, _scheduled;
   String? _client, _mission;
+  late TaskColor _color;
+  late bool _personalTime;
+  late List<TaskAttachment> _attachments;
+  late AttachmentRepository _images;
+  final Set<String> _addedIds = {};
+  bool _saved = false, _busy = false;
   @override
   void initState() {
     super.initState();
     final t = widget.task;
+    _color = t?.color ?? TaskColor.automatic;
+    _personalTime = t?.personalTime ?? false;
+    _attachments = [...?t?.attachments];
+    _images = ref.read(attachmentRepositoryProvider);
     _title = TextEditingController(text: t?.title);
     _notes = TextEditingController(text: t?.notes);
     _duration = TextEditingController(text: '${t?.minutes ?? 30}');
@@ -50,6 +65,11 @@ class _TaskFormState extends ConsumerState<TaskForm> {
   void dispose() {
     for (final c in [_title, _notes, _duration, _project]) {
       c.dispose();
+    }
+    for (final id in _addedIds) {
+      if (!_saved || !_attachments.any((a) => a.id == id)) {
+        unawaited(_images.remove(id).catchError((Object _) {}));
+      }
     }
     super.dispose();
   }
@@ -78,6 +98,9 @@ class _TaskFormState extends ConsumerState<TaskForm> {
     if (!_form.currentState!.validate()) return;
     final task = (widget.task ?? Task(id: newId(), title: '')).copyWith(
       title: _title.text.trim(),
+      color: _color,
+      personalTime: _personalTime,
+      attachments: _attachments,
       notes: _notes.text.trim(),
       minutes: int.parse(_duration.text),
       project: _project.text.trim(),
@@ -105,6 +128,7 @@ class _TaskFormState extends ConsumerState<TaskForm> {
           ? 'Tâche ajoutée'
           : 'Modifications enregistrées',
     )) {
+      _saved = true;
       Navigator.pop(context);
     }
   }
@@ -204,6 +228,33 @@ class _TaskFormState extends ConsumerState<TaskForm> {
                     ),
                   ],
                 ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Couleur de la tâche',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 8),
+                TaskColorPicker(
+                  selected: _color,
+                  onChanged: (v) => setState(() => _color = v),
+                ),
+                const SizedBox(height: 16),
+                AttachmentEditor(
+                  value: _attachments,
+                  onBusyChanged: (v) => setState(() => _busy = v),
+                  onChanged: (value) => setState(() {
+                    _addedIds.addAll(
+                      value
+                          .where(
+                            (a) => !(widget.task?.attachments ?? []).any(
+                              (old) => old.id == a.id,
+                            ),
+                          )
+                          .map((a) => a.id),
+                    );
+                    _attachments = value;
+                  }),
+                ),
                 dateRow('Échéance', _deadline, (d) => _deadline = d),
                 if (_scheduled != null || _expanded)
                   dateRow(
@@ -219,6 +270,15 @@ class _TaskFormState extends ConsumerState<TaskForm> {
                   ),
                 if (_expanded) ...[
                   const Divider(),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Sur mon temps personnel'),
+                    subtitle: const Text(
+                      'Utiliser mes horaires personnels, y compris le week-end.',
+                    ),
+                    value: _personalTime,
+                    onChanged: (v) => setState(() => _personalTime = v),
+                  ),
                   SegmentedButton<bool>(
                     segments: const [
                       ButtonSegment(
@@ -301,7 +361,7 @@ class _TaskFormState extends ConsumerState<TaskForm> {
                 ],
                 const SizedBox(height: 16),
                 FilledButton.icon(
-                  onPressed: save,
+                  onPressed: _busy ? null : save,
                   icon: const Icon(Icons.add_rounded),
                   label: Text(
                     widget.task == null ? 'Ajouter la tâche' : 'Enregistrer',

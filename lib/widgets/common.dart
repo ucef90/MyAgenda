@@ -10,7 +10,7 @@ class PageBody extends StatelessWidget {
     child: ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 1120),
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(22, 18, 22, 32),
+        padding: const EdgeInsets.fromLTRB(22, 24, 22, 100),
         children: children,
       ),
     ),

@@ -6,9 +6,9 @@ Application **Flutter / Dart**, en français, pour organiser tâches personnelle
 
 ## Aperçu
 
-<img src="docs/screenshots/today.png" width="240" alt="Accueil Aujourd’hui" /> <img src="docs/screenshots/tasks.png" width="240" alt="Mes tâches" /> <img src="docs/screenshots/calendar.png" width="240" alt="Agenda sur trois jours" />
+<img src="docs/screenshots/today.png" width="240" alt="Accueil Aujourd’hui" /> <img src="docs/screenshots/tasks.png" width="240" alt="Mes tâches" /> <img src="docs/screenshots/assistant.png" width="240" alt="Assistant personnel" />
 
-## Version livrée : 0.1.1 — locale
+## Version livrée : 0.2.0 — locale
 
 Le projet suit les trois documents de conception : **valider la V1 visuelle avant de connecter FastAPI**. Il démarre avec un jeu de données de découverte daté du jour du premier lancement. Les modifications sont conservées sur l'appareil. Dans Paramètres, « Effacer les données de découverte » permet de repartir à vide (cela efface aussi vos ajouts : exporter avant).
 
@@ -26,7 +26,20 @@ Le projet suit les trois documents de conception : **valider la V1 visuelle avan
 | Paramètres | Prénom, jours et horaires, pause, thème sombre, copie d'une sauvegarde JSON |
 | Plateformes | Projets iOS, Android, macOS et Web inclus |
 
-**Non inclus à ce stade** : compte/authentification, serveur, synchronisation, notifications locales/push, pièces jointes, liens publics avec expiration, calendrier externe, fractionnement automatique, redimensionnement des blocs agenda, récurrence, facturation. L'aperçu client est explicitement local ; aucun faux lien n'est généré. Le texte copié ne se met pas à jour automatiquement.
+**Non inclus à ce stade** : compte/authentification, serveur, synchronisation, notifications locales/push, pièces jointes autres que les images, liens publics avec expiration, calendrier externe, fractionnement automatique, redimensionnement des blocs agenda, récurrence, facturation. L'aperçu client est explicitement local ; aucun faux lien n'est généré. Le texte copié ne se met pas à jour automatiquement.
+
+## Nouveautés 0.2.0
+
+- **Visuels** : import d’images, caméra native iPhone/Android, croquis au doigt ou à la souris, galerie avec zoom, retrait d’un visuel. Les designs doivent être exportés en image (PNG/JPEG) ; pas d’édition de fichiers Figma/PDF. Huit images par tâche, entrées limitées à 20 Mo puis normalisées en PNG à 1 600 px maximum. Les autorisations photos/caméra iOS et fichiers macOS sont déclarées. La caméra n’est pas proposée sur Mac ou Web.
+- **Couleurs** : six couleurs au choix et couleur automatique ; même repère dans liste, cartes et agenda, avec filtre par couleur. Les statuts et priorités restent lisibles en texte.
+- **Liste** : lignes compactes, validation directe, tri par échéance/priorité/durée/nom, archives à la demande, sections « En cours », aujourd’hui, à venir et sans date.
+- **Assistant** : brief par jour, priorités à traiter, suggestions motivées et ajout individuel à l’agenda. Jusqu’à trois tâches puis deux activités personnelles, sans déplacer les rendez-vous.
+- **Envies & rythme** : modèles sport, musique, lecture, marche et activités libres ; durée, fréquence hebdomadaire, moment préféré, jours/horaires personnels, marge entre activités et progression hebdomadaire. Les objectifs se configurent dans Assistant → réglages. Ils ne sont pas déduits automatiquement du texte libre.
+- **Planning personnel** : créneaux du soir et du week-end, contrôle des conflits, aucune seconde proposition d’une même activité le même jour, respect de l’objectif hebdomadaire. Une marge configurable sépare les suggestions ; une réserve de 30 minutes reste disponible avant d’ajouter une activité.
+
+Le moteur est **local et déterministe** : il analyse les champs structurés de vos tâches et préférences, pas le contenu des images. Il ne fournit ni conversation avec une IA ni programme médical/perte de poids. Aucune requête vers un modèle externe et aucune clé API. La V1.1 est migrée sans effacer ses données.
+
+Les images natives sont copiées dans le dossier Application Support privé de MyAgenda ; les métadonnées restent dans le document JSON. Sur Web, un espace séparé du stockage navigateur est limité à 3,5 Mo de texte encodé pour les images, avec erreur explicite si plein. Un formulaire annulé nettoie ses nouveaux fichiers ; le retrait d’un visuel ne supprime son fichier qu’après sauvegarde réussie des métadonnées. L’export JSON depuis les réglages inclut les images en base64 ; l’import n’est pas encore exposé.
 
 ## Démarrage
 
@@ -88,6 +101,8 @@ lib/
     focus/       chronomètre
     pro/         clients, missions et aperçu des disponibilités
     settings/    préférences et sauvegarde
+    assistant/   brief, suggestions et objectifs personnels
+    attachments/ photos, galerie et croquis
 ```
 
 `go_router` gère les routes. Riverpod centralise l'état. `SharedPreferences` conserve un document JSON versionné : adapté à cette V1 locale, **sans chiffrement applicatif**. Utiliser le verrouillage de l'appareil et éviter les données sensibles pendant la validation. Le stockage du navigateur peut être supprimé par le navigateur ; copier régulièrement une sauvegarde. L'import de sauvegarde n'est pas encore exposé dans l'interface.
@@ -121,6 +136,6 @@ La CI GitHub exécute analyse, tests et compilation Web à chaque push/PR. Un jo
 1. Valider ergonomie et parcours sur l'iPhone.
 2. Construire FastAPI / PostgreSQL / SQLAlchemy / Alembic et l'authentification, avec tests d'isolation des données entre utilisateurs.
 3. Remplacer le stockage local par un repository synchronisé, avec migration de cette V1.
-4. Ajouter notifications locales, stockage de pièces jointes et permissions natives.
+4. Ajouter notifications locales et synchronisation des images.
 5. Ajouter partage sécurisé, tokens révocables et expirables, filtrage strict des données publiques ; puis portail client.
 6. Préparer OVH, Docker Compose, HTTPS et sauvegardes. Aucun déploiement OVH ou App Store n'a été effectué.

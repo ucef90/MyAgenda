@@ -7,6 +7,8 @@ import '../../repositories/workspace_store.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/common.dart';
 import '../../widgets/task_card.dart';
+import '../../widgets/task_list_row.dart';
+import '../../theme/task_colors.dart';
 import 'task_form.dart';
 
 class TasksPage extends ConsumerStatefulWidget {
@@ -17,7 +19,9 @@ class TasksPage extends ConsumerStatefulWidget {
 
 class _TasksPageState extends ConsumerState<TasksPage> {
   String _filter = 'Toutes', _search = '';
-  bool _board = false;
+  bool _board = false, _archive = false, _showFilters = false;
+  String _sort = 'Échéance';
+  TaskColor? _color;
   int _column = 0;
   final PageController _pages = PageController();
   @override
@@ -30,23 +34,40 @@ class _TasksPageState extends ConsumerState<TasksPage> {
   Widget build(BuildContext context) {
     final w = ref.watch(workspaceProvider),
         now = ref.watch(clockProvider).valueOrNull ?? DateTime.now();
-    final tasks = w.tasks
-        .where(
-          (t) =>
-              ('${t.title} ${t.project} ${w.clientName(t.clientId)} ${w.missions.where((m) => m.id == t.missionId).firstOrNull?.title ?? ''}')
-                  .toLowerCase()
-                  .contains(_search.toLowerCase()) &&
-              switch (_filter) {
-                'Aujourd’hui' =>
-                  (t.scheduledAt != null && sameDay(t.scheduledAt!, now)) ||
-                      (t.deadline != null && sameDay(t.deadline!, now)),
-                'Pro' => t.professional,
-                'Perso' => !t.professional,
-                'Urgent' => t.priority == Priority.urgent || t.overdueAt(now),
-                _ => true,
-              },
-        )
-        .toList();
+    final tasks =
+        w.tasks
+            .where(
+              (t) =>
+                  (_archive || _board || t.isOpen) &&
+                  (_color == null || t.resolvedColor == _color) &&
+                  ('${t.title} ${t.project} ${w.clientName(t.clientId)} ${w.missions.where((m) => m.id == t.missionId).firstOrNull?.title ?? ''}')
+                      .toLowerCase()
+                      .contains(_search.toLowerCase()) &&
+                  switch (_filter) {
+                    'Aujourd’hui' =>
+                      (t.scheduledAt != null && sameDay(t.scheduledAt!, now)) ||
+                          (t.deadline != null && sameDay(t.deadline!, now)),
+                    'Pro' => t.professional,
+                    'Perso' => !t.professional,
+                    'Urgent' =>
+                      t.priority == Priority.urgent || t.overdueAt(now),
+                    _ => true,
+                  },
+            )
+            .toList()
+          ..sort((a, b) {
+            switch (_sort) {
+              case 'Priorité':
+                return b.priority.index.compareTo(a.priority.index);
+              case 'Durée':
+                return a.minutes.compareTo(b.minutes);
+              case 'Nom':
+                return a.title.toLowerCase().compareTo(b.title.toLowerCase());
+              default:
+                return (a.scheduledAt ?? a.deadline ?? DateTime(9999))
+                    .compareTo(b.scheduledAt ?? b.deadline ?? DateTime(9999));
+            }
+          });
     final header = <Widget>[
       Row(
         children: [
@@ -65,7 +86,7 @@ class _TasksPageState extends ConsumerState<TasksPage> {
       ),
       const SizedBox(height: 8),
       const Text(
-        'Toutes vos idées, une place pour chacune.',
+        'Une liste claire pour passer de l’idée à l’action.',
         style: TextStyle(color: AppColors.muted),
       ),
       const SizedBox(height: 24),
@@ -109,12 +130,20 @@ class _TasksPageState extends ConsumerState<TasksPage> {
               ),
               ButtonSegment(
                 value: true,
-                label: Text('Board'),
+                label: Text('Tableau'),
                 icon: Icon(Icons.view_kanban_outlined),
               ),
             ],
             selected: {_board},
             onSelectionChanged: (v) => setState(() => _board = v.first),
+          ),
+          IconButton(
+            tooltip: 'Trier et filtrer',
+            onPressed: () => setState(() => _showFilters = !_showFilters),
+            icon: Icon(
+              Icons.tune_rounded,
+              color: _color != null || _archive ? AppColors.indigo : null,
+            ),
           ),
           Text(
             '${tasks.length} tâches',
@@ -122,18 +151,73 @@ class _TasksPageState extends ConsumerState<TasksPage> {
           ),
         ],
       ),
-      const SizedBox(height: 24),
+      if (_showFilters) ...[
+        Wrap(
+          spacing: 12,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            DropdownButton<String>(
+              value: _sort,
+              underline: const SizedBox(),
+              items: [
+                for (final s in ['Échéance', 'Priorité', 'Durée', 'Nom'])
+                  DropdownMenuItem(value: s, child: Text('Tri : $s')),
+              ],
+              onChanged: (v) => setState(() => _sort = v!),
+            ),
+            if (!_board)
+              FilterChip(
+                label: const Text('Archives'),
+                selected: _archive,
+                onSelected: (v) => setState(() => _archive = v),
+              ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              ChoiceChip(
+                label: const Text('Toutes les couleurs'),
+                selected: _color == null,
+                onSelected: (_) => setState(() => _color = null),
+              ),
+              for (final c in TaskColor.values.where(
+                (c) => c != TaskColor.automatic,
+              ))
+                Padding(
+                  padding: const EdgeInsets.only(left: 6),
+                  child: ChoiceChip(
+                    label: Text(c.label),
+                    avatar: CircleAvatar(radius: 5, backgroundColor: c.value),
+                    selected: _color == c,
+                    onSelected: (_) =>
+                        setState(() => _color = _color == c ? null : c),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
+      const SizedBox(height: 12),
     ];
     if (!_board) {
       final groups = <String, List<Task>>{
+        'En cours': [],
         'À faire aujourd’hui': [],
         'À venir': [],
         'Sans date': [],
         'Terminées': [],
+        'Annulées': [],
       };
       for (final t in tasks) {
         final date = t.scheduledAt ?? t.deadline;
-        groups[t.status == TaskStatus.completed
+        groups[t.status == TaskStatus.cancelled
+                ? 'Annulées'
+                : t.status == TaskStatus.inProgress
+                ? 'En cours'
+                : t.status == TaskStatus.completed
                 ? 'Terminées'
                 : date == null
                 ? 'Sans date'
@@ -159,7 +243,7 @@ class _TasksPageState extends ConsumerState<TasksPage> {
             for (final t in g.value)
               Padding(
                 padding: const EdgeInsets.only(bottom: 12),
-                child: TaskCard(t),
+                child: TaskListRow(t),
               ),
           ],
         ],

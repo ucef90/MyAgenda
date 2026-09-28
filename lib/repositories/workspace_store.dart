@@ -1,10 +1,14 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/task.dart';
 import '../models/workspace.dart';
 import '../services/planner.dart';
+import '../services/assistant.dart';
+import '../core/format.dart';
 import 'demo_data.dart';
+import 'image_storage.dart' as images;
 
 final preferencesProvider = Provider<SharedPreferences>(
   (ref) => throw UnimplementedError(),
@@ -63,8 +67,30 @@ class WorkspaceStore extends StateNotifier<Workspace> {
   Future<void> flush() => _writes;
   void _change(Workspace next) {
     if (persistenceError != null) throw StateError(persistenceError!);
+    final removed = state.tasks
+        .expand((t) => t.attachments)
+        .where(
+          (a) => !next.tasks.any((t) => t.attachments.any((b) => b.id == a.id)),
+        )
+        .toList();
     state = next;
     _save();
+    unawaited(
+      flush().then((_) async {
+        if (!mounted || persistenceError != null) return;
+        for (final image in removed) {
+          if (!state.tasks.any(
+            (t) => t.attachments.any((a) => a.id == image.id),
+          )) {
+            try {
+              await images.removeImage(image.id);
+            } catch (_) {
+              /* Keep an orphan rather than lose a task. */
+            }
+          }
+        }
+      }),
+    );
   }
 
   void upsert(Task task) {
@@ -78,11 +104,13 @@ class WorkspaceStore extends StateNotifier<Workspace> {
     }
     final old = state.tasks.where((t) => t.id == task.id).firstOrNull;
     if (task.scheduledAt != null &&
+        task.status != TaskStatus.cancelled &&
         (old == null ||
             (old.status == TaskStatus.cancelled &&
                 task.status != TaskStatus.cancelled) ||
             old.scheduledAt != task.scheduledAt ||
             old.minutes != task.minutes ||
+            old.personalTime != task.personalTime ||
             old.deadline != task.deadline ||
             old.earliest != task.earliest) &&
         !const Planner().canSchedule(
@@ -180,8 +208,89 @@ class WorkspaceStore extends StateNotifier<Workspace> {
     _change(preview);
   }
 
-  void savePreferences(Preferences p) =>
-      _change(state.copyWith(preferences: p));
+  void acceptSuggestion(DaySuggestion suggestion) {
+    final now = DateTime.now();
+    var task = suggestion.task;
+    if (suggestion.newActivity) {
+      final goal = state.preferences.goals
+          .where((g) => g.id == task.goalId && g.enabled)
+          .firstOrNull;
+      if (goal == null ||
+          const AgendaAssistant().weekCount(
+                state,
+                goal.id,
+                task.scheduledAt!,
+              ) >=
+              goal.weeklyTarget ||
+          state.tasks.any(
+            (t) =>
+                t.goalId == goal.id &&
+                t.status != TaskStatus.cancelled &&
+                t.scheduledAt != null &&
+                sameDay(t.scheduledAt!, task.scheduledAt!),
+          )) {
+        throw StateError(
+          'Cet objectif a changé ou possède déjà une séance. Actualisez les suggestions.',
+        );
+      }
+      if (!const AgendaAssistant()
+          .build(state, task.scheduledAt!, now)
+          .suggestions
+          .any(
+            (s) =>
+                s.newActivity &&
+                s.task.goalId == goal.id &&
+                s.task.scheduledAt == task.scheduledAt,
+          )) {
+        throw StateError(
+          'Vos disponibilités ou préférences ont changé. Actualisez les suggestions.',
+        );
+      }
+      task = task.copyWith(
+        title: goal.title,
+        color: goal.color,
+        minutes: goal.minutes,
+      );
+    } else {
+      final current = state.tasks.where((t) => t.id == task.id).firstOrNull;
+      if (current == null || !current.isOpen || current.scheduledAt != null) {
+        throw StateError('Cette tâche a changé. Actualisez les suggestions.');
+      }
+      task = current.copyWith(
+        scheduledAt: task.scheduledAt,
+        status: TaskStatus.planned,
+      );
+    }
+    if (!const AgendaAssistant().hasBreathingRoom(task, state, now)) {
+      throw StateError(
+        'Ce créneau n’est plus disponible. Actualisez les suggestions.',
+      );
+    }
+    upsert(task);
+  }
+
+  void savePreferences(Preferences p) {
+    if (p.personalStart < 0 ||
+        p.personalEnd > 1440 ||
+        p.personalStart >= p.personalEnd ||
+        p.personalDays.isEmpty ||
+        p.bufferMinutes < 0 ||
+        p.bufferMinutes > 60 ||
+        p.goals.any(
+          (g) =>
+              g.title.trim().isEmpty ||
+              g.minutes < 5 ||
+              g.minutes > 180 ||
+              g.weeklyTarget < 1 ||
+              g.weeklyTarget > 7,
+        )) {
+      throw ArgumentError(
+        'Vérifiez vos horaires personnels, vos jours et vos activités.',
+      );
+    }
+    _change(state.copyWith(preferences: p));
+  }
+
   void saveClient(Client client) => _change(
     state.copyWith(
       clients: [...state.clients.where((c) => c.id != client.id), client],
@@ -193,6 +302,22 @@ class WorkspaceStore extends StateNotifier<Workspace> {
     ),
   );
   void clearDemo() => _change(Workspace(preferences: state.preferences));
+  Future<String> exportWithImages() async {
+    if (_corruptOnLoad) return export();
+    final snapshot = state;
+    final files = <String, String>{};
+    for (final image in snapshot.tasks.expand((t) => t.attachments)) {
+      final data = await images.readImage(image.id);
+      if (data == null) {
+        throw StateError(
+          'Image manquante : ${image.name}. Export interrompu pour éviter une sauvegarde incomplète.',
+        );
+      }
+      files[image.id] = base64Encode(data);
+    }
+    return jsonEncode({...snapshot.toJson(), 'imageFiles': files});
+  }
+
   String export() => _corruptOnLoad
       ? prefs.getString(storageKey) ?? jsonEncode(state.toJson())
       : const JsonEncoder.withIndent('  ').convert(state.toJson());

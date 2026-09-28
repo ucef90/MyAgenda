@@ -8,6 +8,7 @@ import '../../repositories/workspace_store.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/common.dart';
 import '../today/timeline.dart';
+import '../../theme/task_colors.dart';
 
 class CalendarPage extends ConsumerStatefulWidget {
   const CalendarPage({super.key});
@@ -21,6 +22,32 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
   @override
   Widget build(BuildContext context) {
     final w = ref.watch(workspaceProvider);
+    var startHour = math.min(
+      7,
+      math.min(w.preferences.workStart, w.preferences.personalStart) ~/ 60,
+    );
+    var endHour = math.max(
+      23,
+      (math.max(w.preferences.workEnd, w.preferences.personalEnd) / 60).ceil(),
+    );
+    for (final t in w.tasks.where(
+      (t) =>
+          t.scheduledAt != null &&
+          t.status != TaskStatus.cancelled &&
+          !t.scheduledAt!.isBefore(dayOnly(_day)) &&
+          t.scheduledAt!.isBefore(
+            DateTime(_day.year, _day.month, _day.day + _days),
+          ),
+    )) {
+      startHour = math.min(startHour, t.scheduledAt!.hour);
+      endHour = math.max(
+        endHour,
+        ((t.scheduledAt!.hour * 60 + t.scheduledAt!.minute + t.minutes) / 60)
+            .ceil()
+            .clamp(1, 24),
+      );
+    }
+
     return Column(
       children: [
         Padding(
@@ -126,7 +153,11 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
                             child: Column(
                               children: [
                                 const SizedBox(height: 66),
-                                for (var hour = 7; hour < 23; hour++)
+                                for (
+                                  var hour = startHour;
+                                  hour < endHour;
+                                  hour++
+                                )
                                   SizedBox(
                                     height: 70,
                                     child: Align(
@@ -148,7 +179,7 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
                               scrollDirection: Axis.horizontal,
                               child: SizedBox(
                                 width: width,
-                                height: 1190,
+                                height: (endHour - startHour) * 70.0 + 66,
                                 child: Row(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
@@ -162,6 +193,8 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
                                             _day.day + i,
                                           ),
                                           tasks: w.tasks,
+                                          startHour: startHour,
+                                          endHour: endHour,
                                         ),
                                       ),
                                   ],
@@ -183,7 +216,13 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
 class _DayColumn extends ConsumerWidget {
   final DateTime day;
   final List<Task> tasks;
-  const _DayColumn({required this.day, required this.tasks});
+  final int startHour, endHour;
+  const _DayColumn({
+    required this.day,
+    required this.tasks,
+    required this.startHour,
+    required this.endHour,
+  });
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final today = sameDay(day, DateTime.now());
@@ -235,12 +274,12 @@ class _DayColumn extends ConsumerWidget {
           ),
         ),
         SizedBox(
-          height: 1120,
+          height: (endHour - startHour) * 70.0,
           child: Stack(
             children: [
-              for (var hour = 7; hour < 23; hour++)
+              for (var hour = startHour; hour < endHour; hour++)
                 Positioned(
-                  top: (hour - 7) * 70.0,
+                  top: (hour - startHour) * 70.0,
                   left: 0,
                   right: 0,
                   height: 70,
@@ -269,10 +308,11 @@ class _DayColumn extends ConsumerWidget {
                   ),
                 ),
               for (final t in list)
-                if (t.scheduledAt!.hour >= 7 && t.scheduledAt!.hour < 23)
+                if (t.scheduledAt!.hour >= startHour &&
+                    t.scheduledAt!.hour < endHour)
                   Positioned(
                     top:
-                        ((t.scheduledAt!.hour - 7) * 60 +
+                        ((t.scheduledAt!.hour - startHour) * 60 +
                             t.scheduledAt!.minute) *
                         70 /
                         60,
@@ -282,8 +322,8 @@ class _DayColumn extends ConsumerWidget {
                       46,
                       math.min(
                             t.minutes * 70 / 60,
-                            1120 -
-                                ((t.scheduledAt!.hour - 7) * 60 +
+                            (endHour - startHour) * 70.0 -
+                                ((t.scheduledAt!.hour - startHour) * 60 +
                                         t.scheduledAt!.minute) *
                                     70 /
                                     60,
@@ -316,11 +356,7 @@ class _Event extends StatelessWidget {
   const _Event({required this.t});
   @override
   Widget build(BuildContext context) {
-    final color = t.status == TaskStatus.completed
-        ? AppColors.teal
-        : t.professional
-        ? AppColors.indigo
-        : AppColors.violet;
+    final color = t.displayColor;
     return Material(
       color: color.withValues(alpha: .12),
       borderRadius: BorderRadius.circular(10),

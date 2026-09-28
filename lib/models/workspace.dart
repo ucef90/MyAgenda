@@ -1,4 +1,5 @@
 import 'task.dart';
+import 'personal_goal.dart';
 
 class Client {
   final String id, name, email;
@@ -39,6 +40,10 @@ class Preferences {
   final int workStart, workEnd, breakStart, breakEnd;
   final List<int> weekdays;
   final bool dark;
+  final List<PersonalGoal> goals;
+  final int personalStart, personalEnd, bufferMinutes;
+  final List<int> personalDays;
+  final String motivation;
   const Preferences({
     this.name = 'Youssef',
     this.workStart = 540,
@@ -47,7 +52,49 @@ class Preferences {
     this.breakEnd = 780,
     this.weekdays = const [1, 2, 3, 4, 5],
     this.dark = false,
+    this.goals = const [],
+    this.personalStart = 480,
+    this.personalEnd = 1260,
+    this.personalDays = const [1, 2, 3, 4, 5, 6, 7],
+    this.bufferMinutes = 10,
+    this.motivation = '',
   });
+  Preferences copyWith({
+    String? name,
+    int? workStart,
+    int? workEnd,
+    int? breakStart,
+    int? breakEnd,
+    List<int>? weekdays,
+    bool? dark,
+    List<PersonalGoal>? goals,
+    int? personalStart,
+    int? personalEnd,
+    List<int>? personalDays,
+    int? bufferMinutes,
+    String? motivation,
+  }) => Preferences(
+    name: name ?? this.name,
+    workStart: workStart ?? this.workStart,
+    workEnd: workEnd ?? this.workEnd,
+    breakStart: breakStart ?? this.breakStart,
+    breakEnd: breakEnd ?? this.breakEnd,
+    weekdays: weekdays ?? this.weekdays,
+    dark: dark ?? this.dark,
+    goals: goals ?? this.goals,
+    personalStart: personalStart ?? this.personalStart,
+    personalEnd: personalEnd ?? this.personalEnd,
+    personalDays: personalDays ?? this.personalDays,
+    bufferMinutes: bufferMinutes ?? this.bufferMinutes,
+    motivation: motivation ?? this.motivation,
+  );
+  Preferences get personalWindow => copyWith(
+    workStart: personalStart,
+    workEnd: personalEnd,
+    weekdays: personalDays,
+    breakStart: 0,
+    breakEnd: 0,
+  );
   Map<String, dynamic> toJson() => {
     'name': name,
     'workStart': workStart,
@@ -56,6 +103,12 @@ class Preferences {
     'breakEnd': breakEnd,
     'weekdays': weekdays,
     'dark': dark,
+    'goals': goals.map((g) => g.toJson()).toList(),
+    'personalStart': personalStart,
+    'personalEnd': personalEnd,
+    'personalDays': personalDays,
+    'bufferMinutes': bufferMinutes,
+    'motivation': motivation,
   };
   factory Preferences.fromJson(Map<String, dynamic> j) => Preferences(
     name: j['name'],
@@ -65,6 +118,14 @@ class Preferences {
     breakEnd: j['breakEnd'],
     weekdays: List<int>.from(j['weekdays']),
     dark: j['dark'] ?? false,
+    goals: (j['goals'] as List? ?? [])
+        .map((g) => PersonalGoal.fromJson(Map<String, dynamic>.from(g)))
+        .toList(),
+    personalStart: j['personalStart'] ?? 480,
+    personalEnd: j['personalEnd'] ?? 1260,
+    personalDays: List<int>.from(j['personalDays'] ?? [1, 2, 3, 4, 5, 6, 7]),
+    bufferMinutes: j['bufferMinutes'] ?? 10,
+    motivation: j['motivation'] ?? '',
   );
 }
 

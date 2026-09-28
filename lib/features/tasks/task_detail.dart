@@ -8,6 +8,8 @@ import '../../theme/app_theme.dart';
 import '../../widgets/common.dart';
 import '../planning/planning_sheet.dart';
 import 'task_form.dart';
+import '../../theme/task_colors.dart';
+import '../attachments/attachment_editor.dart';
 
 class TaskDetail extends ConsumerStatefulWidget {
   final String id;
@@ -72,7 +74,7 @@ class _TaskDetailState extends ConsumerState<TaskDetail> {
             children: [
               Tag(
                 t.professional ? 'Professionnel' : 'Personnel',
-                color: t.professional ? AppColors.indigo : AppColors.violet,
+                color: t.displayColor,
               ),
               const Tag(
                 'Privé',
@@ -142,6 +144,20 @@ class _TaskDetailState extends ConsumerState<TaskDetail> {
               if (s != null) attempt(context, () => store.setStatus(t, s));
             },
           ),
+          SectionTitle(
+            'Photos & croquis',
+            action: TextButton.icon(
+              onPressed: () => showTaskForm(context, task: t),
+              icon: const Icon(Icons.add_photo_alternate_outlined),
+              label: const Text('Ajouter'),
+            ),
+          ),
+          if (t.attachments.isEmpty)
+            const Text(
+              'Une photo, un design ou un croquis pour donner du contexte.',
+            )
+          else
+            AttachmentGallery(attachments: t.attachments),
           const SectionTitle('Sous-tâches'),
           if (t.checklist.isNotEmpty) ...[
             LinearProgressIndicator(

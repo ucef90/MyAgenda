@@ -1,3 +1,12 @@
+## Version 0.2.0 — assistant et visuels
+
+- Analyse Dart et 29 tests automatisés réussis sur Mac : migration des données, conflits et marges, objectifs hebdomadaires, soirées/week-ends, propositions périmées, persistance des images, import simulé et refus de permission, personnalisation, couleurs et navigation mobile/bureau.
+- Rendu relu sur captures téléphone 390 px et bureau ; filtres avancés repliables, priorités repliables, suggestions sur deux colonnes sur grand écran.
+- Caméra iPhone : code et permissions ajoutés ; validation physique en attente du téléphone connecté et de la signature Apple. L’import simulé n’est pas un test matériel de caméra.
+- Données locales uniquement, objectifs à configurer dans Assistant → réglages, pas de synchronisation Mac/iPhone ou d’analyse du contenu des photos.
+
+Parcours à vérifier sur l’iPhone : nouvelle tâche → Photo → autoriser → prendre une photo → enregistrer → fermer/rouvrir → zoom ; répéter avec refus d’autorisation. Pour le planning : créer un objectif Musique, 20 min, trois fois/semaine le soir, ajouter une suggestion puis vérifier sa présence dans Agenda et le compteur hebdomadaire.
+
 # Parcours de validation de la V1
 
 ## Avant d'utiliser des données réelles

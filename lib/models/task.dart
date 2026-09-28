@@ -1,4 +1,20 @@
+import 'attachment.dart';
+
 enum TaskStatus { todo, planned, inProgress, completed, cancelled }
+
+enum TaskColor { automatic, indigo, teal, blue, violet, amber, rose }
+
+extension TaskColorLabel on TaskColor {
+  String get label => [
+    'Automatique',
+    'Indigo',
+    'Vert',
+    'Bleu',
+    'Violet',
+    'Orange',
+    'Rose',
+  ][index];
+}
 
 enum Priority { low, normal, important, urgent }
 
@@ -29,7 +45,10 @@ const _unset = Object();
 
 class Task {
   final String id, title, notes, project;
-  final String? clientId, missionId;
+  final String? clientId, missionId, goalId;
+  final TaskColor color;
+  final bool personalTime;
+  final List<TaskAttachment> attachments;
   final bool professional;
   final int minutes, elapsedSeconds;
   final DateTime? earliest, deadline, scheduledAt, runningSince;
@@ -42,6 +61,10 @@ class Task {
     this.notes = '',
     this.project = '',
     this.clientId,
+    this.goalId,
+    this.color = TaskColor.automatic,
+    this.personalTime = false,
+    this.attachments = const [],
     this.missionId,
     this.professional = false,
     this.minutes = 30,
@@ -71,6 +94,10 @@ class Task {
           ? 0
           : now.difference(runningSince!).inSeconds.clamp(0, 31536000));
   Task copyWith({
+    TaskColor? color,
+    bool? personalTime,
+    List<TaskAttachment>? attachments,
+    Object? goalId = _unset,
     String? title,
     String? notes,
     String? project,
@@ -88,6 +115,10 @@ class Task {
     List<ChecklistItem>? checklist,
   }) => Task(
     id: id,
+    color: color ?? this.color,
+    personalTime: personalTime ?? this.personalTime,
+    attachments: attachments ?? this.attachments,
+    goalId: identical(goalId, _unset) ? this.goalId : goalId as String?,
     title: title ?? this.title,
     notes: notes ?? this.notes,
     project: project ?? this.project,
@@ -116,6 +147,10 @@ class Task {
   );
   Map<String, dynamic> toJson() => {
     'id': id,
+    'color': color.name,
+    'personalTime': personalTime,
+    'goalId': goalId,
+    'attachments': attachments.map((a) => a.toJson()).toList(),
     'title': title,
     'notes': notes,
     'project': project,
@@ -134,6 +169,14 @@ class Task {
   };
   factory Task.fromJson(Map<String, dynamic> j) => Task(
     id: j['id'],
+    color:
+        TaskColor.values.where((c) => c.name == j['color']).firstOrNull ??
+        TaskColor.automatic,
+    personalTime: j['personalTime'] ?? false,
+    goalId: j['goalId'],
+    attachments: (j['attachments'] as List? ?? [])
+        .map((a) => TaskAttachment.fromJson(Map<String, dynamic>.from(a)))
+        .toList(),
     title: j['title'],
     notes: j['notes'] ?? '',
     project: j['project'] ?? '',

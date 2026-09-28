@@ -6,6 +6,7 @@ import '../models/task.dart';
 import '../repositories/workspace_store.dart';
 import '../theme/app_theme.dart';
 import 'common.dart';
+import '../theme/task_colors.dart';
 
 class TaskCard extends ConsumerWidget {
   final Task task;
@@ -15,7 +16,7 @@ class TaskCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final w = ref.watch(workspaceProvider);
     final now = ref.watch(clockProvider).valueOrNull ?? DateTime.now();
-    final color = task.professional ? AppColors.indigo : AppColors.violet;
+    final color = task.displayColor;
     return Card(
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
@@ -57,10 +58,7 @@ class TaskCard extends ConsumerWidget {
                               : task.project.isEmpty
                               ? 'Personnel'
                               : task.project,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: AppColors.muted,
-                          ),
+                          style: TextStyle(fontSize: 13, color: color),
                         ),
                       ],
                     ),
@@ -124,6 +122,12 @@ class TaskCard extends ConsumerWidget {
                       ),
                     ],
                   ),
+                  if (task.attachments.isNotEmpty)
+                    Tag(
+                      '${task.attachments.length} visuels',
+                      icon: Icons.image_outlined,
+                      color: color,
+                    ),
                   if (task.deadline != null)
                     Text(
                       deadlineLabel(task.deadline),

@@ -8,10 +8,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:my_agenda/app.dart';
+import 'package:my_agenda/widgets/task_list_row.dart';
 import 'package:my_agenda/models/task.dart';
+import 'package:my_agenda/models/personal_goal.dart';
 import 'package:my_agenda/repositories/workspace_store.dart';
 
 void main() {
+  WidgetController.hitTestWarningShouldBeFatal = true;
   Future<void> launch(
     WidgetTester tester, {
     Size size = const Size(390, 844),
@@ -44,13 +47,19 @@ void main() {
       find.widgetWithText(TextFormField, 'Que devez-vous faire ?'),
       'Vérifier mon agenda',
     );
+    await tester.ensureVisible(find.text('Ajouter la tâche'));
     await tester.tap(find.text('Ajouter la tâche'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Tâches'));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField).first, 'Vérifier mon agenda');
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Vérifier mon agenda').last);
+    await tester.pump(const Duration(seconds: 4));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(
+      find.widgetWithText(TaskListRow, 'Vérifier mon agenda'),
+    );
+    await tester.tap(find.widgetWithText(TaskListRow, 'Vérifier mon agenda'));
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(
       find.widgetWithText(TextField, 'Ajouter une sous-tâche'),
@@ -85,7 +94,13 @@ void main() {
   ) async {
     for (final size in [const Size(360, 800), const Size(1280, 900)]) {
       await launch(tester, size: size);
-      for (final label in ['Tâches', 'Agenda', 'Pro', 'Aujourd’hui']) {
+      for (final label in [
+        'Tâches',
+        'Agenda',
+        'Assistant',
+        'Pro',
+        'Aujourd’hui',
+      ]) {
         await tester.tap(find.text(label).last);
         await tester.pumpAndSettle();
         expect(tester.takeException(), isNull, reason: '$label at $size');
@@ -95,6 +110,7 @@ void main() {
               'Tâches': 'Mes tâches',
               'Agenda': 'Mon agenda',
               'Pro': 'Mon espace Pro',
+              'Assistant': 'Mon assistant',
               'Aujourd’hui': 'Bonjour Youssef',
             }[label]!,
           ),
@@ -140,6 +156,78 @@ void main() {
       await tester.pumpWidget(const SizedBox());
     },
   );
+  testWidgets(
+    'Personalize assistant, save goals, and keep them when saving general settings',
+    (tester) async {
+      await launch(tester);
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(MyAgendaApp)),
+      );
+      container.read(routerProvider).go('/assistant/preferences');
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Pratiquer la musique'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Valider cette activité'));
+      await tester.tap(find.text('Valider cette activité'));
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.text('Enregistrer mes préférences'),
+        400,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.tap(find.text('Enregistrer mes préférences'));
+      await tester.pumpAndSettle();
+      final store = container.read(workspaceProvider.notifier);
+      expect(
+        store.state.preferences.goals.single.title,
+        'Pratiquer la musique',
+      );
+      container.read(routerProvider).go('/settings');
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField).first, 'Youssef test');
+      await tester.pump(const Duration(seconds: 4));
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.text('Enregistrer mes préférences'),
+        400,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.tap(find.text('Enregistrer mes préférences'));
+      await tester.pumpAndSettle();
+      expect(
+        store.state.preferences.goals.single.title,
+        'Pratiquer la musique',
+      );
+      expect(store.state.preferences.name, 'Youssef test');
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+  testWidgets('Task color is saved and used by list filtering', (tester) async {
+    await launch(tester);
+    await tester.tap(find.byTooltip('Nouvelle tâche'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Que devez-vous faire ?'),
+      'Mon design',
+    );
+    await tester.ensureVisible(find.widgetWithText(ChoiceChip, 'Rose'));
+    await tester.tap(find.widgetWithText(ChoiceChip, 'Rose'));
+    await tester.ensureVisible(find.text('Ajouter la tâche'));
+    await tester.tap(find.text('Ajouter la tâche'));
+    await tester.pumpAndSettle();
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(MyAgendaApp)),
+    );
+    expect(container.read(workspaceProvider).tasks.last.color, TaskColor.rose);
+    container.read(routerProvider).go('/tasks');
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).first, 'Mon design');
+    await tester.pumpAndSettle();
+    expect(find.widgetWithText(TaskListRow, 'Mon design'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
   testWidgets('Capture review screens when explicitly requested', (
     tester,
   ) async {
@@ -164,6 +252,26 @@ void main() {
     final container = ProviderContainer(
       overrides: [preferencesProvider.overrideWithValue(prefs)],
     );
+    final demo = container.read(workspaceProvider);
+    container
+        .read(workspaceProvider.notifier)
+        .savePreferences(
+          demo.preferences.copyWith(
+            goals: const [
+              PersonalGoal(
+                id: 'sport',
+                title: 'Sport à mon rythme',
+                color: TaskColor.teal,
+              ),
+              PersonalGoal(
+                id: 'musique',
+                title: 'Pratiquer la musique',
+                minutes: 20,
+                color: TaskColor.violet,
+              ),
+            ],
+          ),
+        );
     await tester.pumpWidget(
       UncontrolledProviderScope(
         container: container,
@@ -176,7 +284,12 @@ void main() {
       'tasks': '/tasks',
       'calendar': '/calendar',
       'pro': '/pro',
+      'assistant': '/assistant',
+      'assistant-desktop': '/assistant',
     }.entries) {
+      tester.view.physicalSize = entry.key.endsWith('desktop')
+          ? const Size(1280, 900)
+          : const Size(390, 844);
       container.read(routerProvider).go(entry.value);
       await tester.pumpAndSettle();
       final boundary =

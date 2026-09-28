@@ -9,18 +9,19 @@ import '../features/tasks/task_form.dart';
 class AppShell extends ConsumerWidget {
   final Widget child;
   const AppShell({super.key, required this.child});
-  static const routes = ['/', '/tasks', '/calendar', '/pro'];
-  static const labels = ['Aujourd’hui', 'Tâches', 'Agenda', 'Pro'];
+  static const routes = ['/', '/tasks', '/calendar', '/assistant', '/pro'];
+  static const labels = ['Aujourd’hui', 'Tâches', 'Agenda', 'Assistant', 'Pro'];
   static const icons = [
     Icons.wb_sunny_outlined,
     Icons.check_box_outlined,
     Icons.calendar_month_outlined,
+    Icons.auto_awesome_outlined,
     Icons.work_outline_rounded,
   ];
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final current = GoRouterState.of(context).uri.path;
-    final active = routes.indexOf(current).clamp(0, 3);
+    final active = routes.indexOf(current).clamp(0, 4);
     final error = ref.watch(persistenceErrorProvider);
     final wide = MediaQuery.sizeOf(context).width >= 960;
     final bg = Theme.of(context).brightness == Brightness.dark
@@ -115,7 +116,7 @@ class AppShell extends ConsumerWidget {
                           ],
                         ),
                         const SizedBox(height: 36),
-                        for (var i = 0; i < 4; i++)
+                        for (var i = 0; i < routes.length; i++)
                           Padding(
                             padding: const EdgeInsets.only(bottom: 8),
                             child: ListTile(
@@ -161,6 +162,20 @@ class AppShell extends ConsumerWidget {
               )
             : content,
       ),
+      floatingActionButton: wide
+          ? null
+          : FloatingActionButton(
+              heroTag: 'quick-add',
+              backgroundColor: AppColors.indigo,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(18),
+              ),
+              tooltip: 'Nouvelle tâche',
+              elevation: 2,
+              onPressed: () => showTaskForm(context),
+              child: const Icon(Icons.add_rounded),
+            ),
       bottomNavigationBar: wide
           ? null
           : Container(
@@ -172,34 +187,7 @@ class AppShell extends ConsumerWidget {
               ),
               child: SafeArea(
                 top: false,
-                child: Row(
-                  children: [
-                    nav(0),
-                    nav(1),
-                    SizedBox(
-                      width: 64,
-                      height: 66,
-                      child: Center(
-                        child: SizedBox(
-                          width: 52,
-                          height: 52,
-                          child: FloatingActionButton(
-                            heroTag: 'quick-add',
-                            tooltip: 'Nouvelle tâche',
-                            elevation: 0,
-                            backgroundColor: AppColors.indigo,
-                            foregroundColor: Colors.white,
-                            shape: const CircleBorder(),
-                            onPressed: () => showTaskForm(context),
-                            child: const Icon(Icons.add_rounded, size: 28),
-                          ),
-                        ),
-                      ),
-                    ),
-                    nav(2),
-                    nav(3),
-                  ],
-                ),
+                child: Row(children: [nav(0), nav(1), nav(2), nav(3), nav(4)]),
               ),
             ),
     );

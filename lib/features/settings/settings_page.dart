@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/config.dart';
 import '../../core/format.dart';
-import '../../models/workspace.dart';
 import '../../repositories/workspace_store.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/common.dart';
@@ -65,6 +65,16 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             'Votre espace,\nvos habitudes.',
             style: Theme.of(context).textTheme.headlineLarge,
           ),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.auto_awesome_outlined),
+            title: const Text('Mes envies & mon rythme'),
+            subtitle: const Text(
+              'Sport, musique et suggestions personnalisées',
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push('/assistant/preferences'),
+          ),
           const SectionTitle('Profil'),
           TextField(
             controller: _name,
@@ -118,7 +128,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               attempt(
                 context,
                 () => store.savePreferences(
-                  Preferences(
+                  w.preferences.copyWith(
                     name: _name.text.trim(),
                     workStart: _start,
                     workEnd: _end,
@@ -144,12 +154,22 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           ),
           OutlinedButton.icon(
             onPressed: () async {
-              await Clipboard.setData(ClipboardData(text: store.export()));
-              if (context.mounted) {
-                toast(
-                  context,
-                  'Sauvegarde JSON copiée. Conservez-la dans un fichier sûr.',
-                );
+              try {
+                final exported = await store.exportWithImages();
+                await Clipboard.setData(ClipboardData(text: exported));
+                if (context.mounted) {
+                  toast(
+                    context,
+                    'Sauvegarde avec images copiée. Conservez-la dans un fichier sûr.',
+                  );
+                }
+              } catch (_) {
+                if (context.mounted) {
+                  toast(
+                    context,
+                    'La sauvegarde complète n’a pas pu être copiée. Vérifiez que les images sont accessibles.',
+                  );
+                }
               }
             },
             icon: const Icon(Icons.copy_all_outlined),
@@ -179,12 +199,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           ],
           const SectionTitle('Cette première version'),
           const Text(
-            'Tâches, sous-tâches, notes, planning et focus sont utilisables localement. La connexion serveur, les rappels système et les liens publics clients viendront après validation de l’interface.',
+            'Tâches, images, croquis, objectifs, assistant, planning et focus sont utilisables localement. La connexion serveur, les rappels système et les liens publics clients viendront après validation de l’interface.',
           ),
           const SizedBox(height: 28),
           const Center(
             child: Text(
-              '$appName · 0.1.1\n$appTagline',
+              '$appName · 0.2.0\n$appTagline',
               textAlign: TextAlign.center,
               style: TextStyle(color: AppColors.muted, fontSize: 13),
             ),

@@ -9,6 +9,7 @@ import '../../theme/app_theme.dart';
 import '../../widgets/common.dart';
 import '../../widgets/task_card.dart';
 import 'timeline.dart';
+import '../assistant/assistant_page.dart';
 
 class TodayPage extends ConsumerWidget {
   const TodayPage({super.key});
@@ -87,7 +88,7 @@ class TodayPage extends ConsumerWidget {
         ),
         const SizedBox(height: 8),
         const Text(
-          'Une chose à la fois. À votre rythme.',
+          'Vos journées avancent. Vos envies aussi.',
           style: TextStyle(color: AppColors.muted),
         ),
         if (w.demo)
@@ -110,6 +111,8 @@ class TodayPage extends ConsumerWidget {
           ),
         const SizedBox(height: 24),
         _FocusCard(task: next),
+        const SizedBox(height: 18),
+        const AssistantTeaser(),
         const SizedBox(height: 22),
         Card(
           child: Padding(
