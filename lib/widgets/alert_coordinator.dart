@@ -51,12 +51,12 @@ class _AlertCoordinatorState extends ConsumerState<AlertCoordinator>
   }
 
   Future<void> _sync({bool force = false}) async {
-    if (!mounted || !_foreground) return;
+    if (!mounted) return;
     // Only schedule a state that has reached persistent storage.
     final store = ref.read(workspaceProvider.notifier);
     await Future<void>.delayed(Duration.zero);
     await store.flush();
-    if (!mounted || !_foreground || store.persistenceError != null) return;
+    if (!mounted || store.persistenceError != null) return;
     try {
       await _alerts.sync(
         ref.read(workspaceProvider),

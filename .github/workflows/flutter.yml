@@ -38,8 +38,8 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
-      - run: flutter build macos --release
       - run: flutter build ios --release --no-codesign
+      - run: flutter build macos --release
       - run: ditto -c -k --keepParent build/macos/Build/Products/Release/MyAgenda.app build/MyAgenda-macos.zip
       - uses: actions/upload-artifact@v4
         with:

@@ -1,3 +1,8 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:my_agenda/features/settings/alerts_page.dart';
+import 'package:my_agenda/repositories/workspace_store.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:my_agenda/models/task.dart';
@@ -6,6 +11,7 @@ import 'package:my_agenda/services/ios_alerts.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  WidgetController.hitTestWarningShouldBeFatal = true;
   final now = DateTime(2030, 1, 7, 9);
   const enabled = Preferences(
     remindersEnabled: true,
@@ -199,6 +205,87 @@ void main() {
       );
       expect((calls.last.arguments as Map)['events'], isEmpty);
       expect((calls.last.arguments as Map)['validEvents'], isEmpty);
+    },
+  );
+  testWidgets(
+    'iPhone settings handle permission refusal then authorization without overflow',
+    (tester) async {
+      tester.view.physicalSize = const Size(360, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      SharedPreferences.setMockInitialValues({});
+      final preferences = await SharedPreferences.getInstance();
+      var granted = false;
+      final calls = <String>[];
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(IOSAlerts.channel, (call) async {
+            calls.add(call.method);
+            if (call.method == 'requestPermission') return granted;
+            if (call.method == 'status') {
+              return {
+                'authorized': granted,
+                'liveSupported': true,
+                'liveEnabled': true,
+                'pending': 0,
+              };
+            }
+            return null;
+          });
+      addTearDown(
+        () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(IOSAlerts.channel, null),
+      );
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            preferencesProvider.overrideWithValue(preferences),
+            iosAlertsProvider.overrideWithValue(
+              IOSAlerts(supportedOverride: true),
+            ),
+          ],
+          child: MaterialApp(
+            builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(
+                context,
+              ).copyWith(textScaler: TextScaler.linear(1.2)),
+              child: child!,
+            ),
+            home: const AlertsPage(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final context = tester.element(find.byType(AlertsPage));
+      final container = ProviderScope.containerOf(context);
+      await tester.tap(find.text('Me rappeler mes tâches'));
+      await tester.pumpAndSettle();
+      expect(
+        container.read(workspaceProvider).preferences.remindersEnabled,
+        false,
+      );
+      expect(calls, contains('requestPermission'));
+      granted = true;
+      await tester.pump(const Duration(seconds: 5));
+      await tester.tap(find.text('Me rappeler mes tâches'));
+      await tester.pumpAndSettle();
+      expect(
+        container.read(workspaceProvider).preferences.remindersEnabled,
+        true,
+      );
+      expect(calls, contains('syncReminders'));
+      await tester.drag(find.byType(ListView), const Offset(0, -400));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Activité en direct'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Activité en direct'));
+      await tester.pumpAndSettle();
+      expect(
+        container.read(workspaceProvider).preferences.liveActivitiesEnabled,
+        true,
+      );
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
     },
   );
 }
